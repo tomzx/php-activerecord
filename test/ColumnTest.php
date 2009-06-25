@@ -1,87 +1,76 @@
 <?php
-include 'helpers/config.php';
-
+namespace Smoothie;
 use ActiveRecord\Column;
 
-class ColumnTest extends SnakeCase_PHPUnit_Framework_TestCase
-{
-	public function setUp()
+require_once 'TestHelper.php';
+
+context("a Column", function() {
+	function assert_mapped_type($type, $raw_type)
 	{
-		$this->column = new Column();
+		transient()->column->raw_type = $raw_type;
+		assert_equals($type,transient()->column->map_raw_type());
 	}
 
-	public function assert_mapped_type($type, $raw_type)
+	function assert_cast($type, $casted_value, $original_value)
 	{
-		$this->column->raw_type = $raw_type;
-		$this->assert_equals($type,$this->column->map_raw_type());
-	}
-
-	public function assert_cast($type, $casted_value, $original_value)
-	{
-		$this->column->type = $type;
-		$value = $this->column->cast($original_value);
+		transient()->column->type = $type;
+		$value = transient()->column->cast($original_value);
 
 		if ($original_value != null && ($type == Column::DATETIME || $type == Column::DATE))
-			$this->assert_true($value instanceof \DateTime);
+			assert_instance_of('\DateTime',$value);
 		else
-			$this->assert_same($casted_value,$value);
+			assert_identical($casted_value,$value);
 	}
 
-	public function test_map_raw_type_dates()
-	{
-		$this->assert_mapped_type(Column::DATETIME,'datetime');
-		$this->assert_mapped_type(Column::DATE,'date');
-	}
+	setup(function() { transient()->column = new Column(); });
+	
+	should("map dates", function() {
+		assert_mapped_type(Column::DATETIME, 'datetime');
+		assert_mapped_type(Column::DATE, 'date');
+	});
 
-	public function test_map_raw_type_integers()
-	{
-		$this->assert_mapped_type(Column::INTEGER,'integer');
-		$this->assert_mapped_type(Column::INTEGER,'int');
-		$this->assert_mapped_type(Column::INTEGER,'tinyint');
-		$this->assert_mapped_type(Column::INTEGER,'smallint');
-		$this->assert_mapped_type(Column::INTEGER,'mediumint');
-		$this->assert_mapped_type(Column::INTEGER,'bigint');
-	}
+	should("map ints", function() {
+		assert_mapped_type(Column::INTEGER,'integer');
+		assert_mapped_type(Column::INTEGER,'int');
+		assert_mapped_type(Column::INTEGER,'tinyint');
+		assert_mapped_type(Column::INTEGER,'smallint');
+		assert_mapped_type(Column::INTEGER,'mediumint');
+		assert_mapped_type(Column::INTEGER,'bigint');
+	});
 
-	public function test_map_raw_type_decimals()
-	{
-		$this->assert_mapped_type(Column::DECIMAL,'float');
-		$this->assert_mapped_type(Column::DECIMAL,'double');
-		$this->assert_mapped_type(Column::DECIMAL,'numeric');
-		$this->assert_mapped_type(Column::DECIMAL,'dec');
-	}
+	should("map decimals", function() {
+		assert_mapped_type(Column::DECIMAL,'float');
+		assert_mapped_type(Column::DECIMAL,'double');
+		assert_mapped_type(Column::DECIMAL,'numeric');
+		assert_mapped_type(Column::DECIMAL,'dec');
+	});
 
-	public function test_map_raw_type_strings()
-	{
-		$this->assert_mapped_type(Column::STRING,'string');
-		$this->assert_mapped_type(Column::STRING,'varchar');
-		$this->assert_mapped_type(Column::STRING,'text');
-	}
+	should("map strings", function() {
+		assert_mapped_type(Column::STRING,'string');
+		assert_mapped_type(Column::STRING,'varchar');
+		assert_mapped_type(Column::STRING,'text');
+	});
 
-	public function test_map_raw_type_default_to_string()
-	{
-		$this->assert_mapped_type(Column::STRING,'bajdslfjasklfjlksfd');
-	}
+	should("map unknown types to string", function() {
+		assert_mapped_type(Column::STRING,'bajdslfjasklfjlksfd');
+	});
 
-	public function test_map_raw_type_changes_integer_to_int()
-	{
-		$this->column->raw_type = 'integer';
-		$this->column->map_raw_type();
-		$this->assert_equals('int',$this->column->raw_type);
-	}
+	should("change integer to int", function() {
+		transient()->column->raw_type = 'integer';
+		transient()->column->map_raw_type();
+		assert_equals('int',transient()->column->raw_type);
+	});
 
-	public function test_cast()
-	{
-		$this->assert_cast(Column::INTEGER,1,'1');
-		$this->assert_cast(Column::INTEGER,1,'1.5');
-		$this->assert_cast(Column::DECIMAL,1.5,'1.5');
-		$this->assert_cast(Column::DATETIME,new \DateTime('2001-01-01'),'2001-01-01');
-		$this->assert_cast(Column::DATE,new \DateTime('2001-01-01'),'2001-01-01');
-		$this->assert_cast(Column::STRING,'bubble tea','bubble tea');
-	}
+	should("typecast values", function() {
+		assert_cast(Column::INTEGER,1,'1');
+		assert_cast(Column::INTEGER,1,'1.5');
+		assert_cast(Column::DECIMAL,1.5,'1.5');
+		assert_cast(Column::DATETIME,new \DateTime('2001-01-01'),'2001-01-01');
+		assert_cast(Column::DATE,new \DateTime('2001-01-01'),'2001-01-01');
+		assert_cast(Column::STRING,'bubble tea','bubble tea');
+	});
 
-	public function test_cast_leave_null_alone()
-	{
+	should("not try and cast null values", function() {
 		$types = array(
 			Column::STRING,
 			Column::INTEGER,
@@ -89,9 +78,8 @@ class ColumnTest extends SnakeCase_PHPUnit_Framework_TestCase
 			Column::DATETIME,
 			Column::DATE);
 
-		foreach ($types as $type) {
-			$this->assert_cast($type,null,null);
-		}
-	}
-}
+		foreach ($types as $type)
+			assert_cast($type,null,null);
+	});
+});
 ?>
