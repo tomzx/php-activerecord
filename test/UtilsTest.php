@@ -2,7 +2,7 @@
 namespace Smoothie;
 use ActiveRecord as AR;
 
-include 'helpers/config.php';
+require_once 'TestHelper.php';
 
 context("Utils", function() {
 	context("collect", function() {

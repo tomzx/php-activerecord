@@ -1,7 +1,7 @@
 <?php
 namespace Smoothie;
 
-include 'helpers/config.php';
+require_once 'TestHelper.php';
 require_once dirname(__FILE__) . '/../lib/Inflector.php';
 
 context("Inflector", function() {
