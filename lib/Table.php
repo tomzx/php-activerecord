@@ -172,17 +172,20 @@ class Table
 
 		if (array_key_exists('having',$options))
 			$sql->having($options['having']);
-
+			
+		$eager_load = array_key_exists('include',$options) ? $options['include'] : null;
 		$readonly = (array_key_exists('readonly',$options) && $options['readonly']) ? true : false;
 
-		return $this->find_by_sql($sql->to_s(),$sql->get_where_values(), $readonly);
+		return $this->find_by_sql($sql->to_s(),$sql->get_where_values(), $readonly, $eager_load);
 	}
 
-	public function find_by_sql($sql, $values=null, $readonly=false)
+	public function find_by_sql($sql, $values=null, $readonly=false, $eager_load=null)
 	{
 		$this->last_sql = $sql;
-
-		$list = array();
+		
+		$use_eager_load = is_null($eager_load) ? false : true;
+			
+		$list = $pk_for_eager = array();
 		$sth = $this->conn->query($sql,$values);
 
 		while (($row = $sth->fetch()))
@@ -191,10 +194,32 @@ class Table
 
 			if ($readonly)
 				$model->readonly();
-
+				
+			if ($use_eager_load)
+				$pk_for_eager[] = $model->values_for_pk();
+				
 			$list[] = $model;
 		}
+		
+		if ($use_eager_load)
+			$this->execute_eager_load($list, $pk_for_eager, $eager_load);
+			
 		return $list;
+	}
+	
+	private function execute_eager_load($models=array(), $primary_keys, $includes)
+	{
+		foreach ($includes as $name)
+		{
+			if (!($rel = $this->get_relationship($name)))
+				throw new \Exception("Relationship: '$name' not found on model: {$this->class->name}");	
+				
+			$rel->load_eagerly($models, $primary_keys, $this);
+		}
+	}
+	
+	private function check_eager_load($includes)
+	{
 	}
 
 	public function get_fully_qualified_table_name()

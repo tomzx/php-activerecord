@@ -821,6 +821,12 @@ class Model
 	{
 		$this->set_attributes_via_mass_assignment($attributes, true);
 	}
+	
+	public function set_relationship($relationship, $name)
+	{
+		if (static::table()->get_relationship($name))
+			$this->__relationships[$name] = $relationship;
+	}
 
 	/**
 	 * Passing strict as true will throw an exception if an attribute does not exist.

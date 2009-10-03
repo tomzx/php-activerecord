@@ -404,6 +404,39 @@ class HasMany extends AbstractRelationship
 		$attributes = $this->inject_foreign_key_for_new_association($model, $attributes);
 		return parent::create_association($model, $attributes);
 	}
+	
+	public function load_eagerly($models=array(), $primary_keys, Table $table)
+	{
+		$this->set_keys($table->class->name);
+		$values = array();
+		$options = array();
+		$fk = $this->foreign_key[0];
+		$pk = $table->pk[0];
+		
+		foreach ($primary_keys as $column => $value)
+			$values[] = $value[$pk];
+			
+		$values = array($values);
+		$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string($fk,$values);
+		
+		$class = $this->class_name;
+		$related_models = $class::find('all', $values, $options);
+		
+		foreach ($models as $model)
+		{
+			$relationships = array();
+			$pk_match = $model->$pk;
+			
+			foreach ($related_models as $related)
+			{
+				if ($related->$fk === $pk_match)
+					$relationships[] = $related;
+			}
+			
+			if (!empty($relationships))
+				$model->set_relationship($relationships, $this->attribute_name);	
+		}
+	}
 };
 
 /**
