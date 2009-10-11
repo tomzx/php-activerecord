@@ -173,17 +173,23 @@ class Table
 		if (array_key_exists('having',$options))
 			$sql->having($options['having']);
 			
+		if (array_key_exists('models_for_eager_load', $options))
+			$models_for_eager_load = $options['models_for_eager_load'];
+		else
+			$models_for_eager_load = array(); 	
+			
 		$eager_load = array_key_exists('include',$options) ? $options['include'] : null;
 		$readonly = (array_key_exists('readonly',$options) && $options['readonly']) ? true : false;
 
 		return $this->find_by_sql($sql->to_s(),$sql->get_where_values(), $readonly, $eager_load);
 	}
 
-	public function find_by_sql($sql, $values=null, $readonly=false, $eager_load=null)
+	public function find_by_sql($sql, $values=null, $readonly=false, $eager_load=null, $models_for_eager_load=array())
 	{
 		$this->last_sql = $sql;
 		
-		$use_eager_load = is_null($eager_load) ? false : true;
+		$collect_pk_for_eager = is_null($eager_load) ? false : true;
+		$attach_associations_from_eager = empty($models_for_eager_load) : false : true;
 			
 		$list = $pk_for_eager = array();
 		$sth = $this->conn->query($sql,$values);
@@ -195,8 +201,20 @@ class Table
 			if ($readonly)
 				$model->readonly();
 				
-			if ($use_eager_load)
+			if ($collect_pk_for_eager)
 				$pk_for_eager[] = $model->values_for_pk();
+				
+			if ($attach_associations_from_eager)
+			{
+				foreach ($related_models as $related)
+				{
+					if ($related->$fk === $pk_match)
+						$relationships[] = $related;
+				}
+			
+				if (!empty($relationships))
+					$model->set_relationship($relationships, $this->attribute_na);
+			}
 				
 			$list[] = $model;
 		}
@@ -216,10 +234,6 @@ class Table
 				
 			$rel->load_eagerly($models, $primary_keys, $this);
 		}
-	}
-	
-	private function check_eager_load($includes)
-	{
 	}
 
 	public function get_fully_qualified_table_name()

@@ -405,7 +405,7 @@ class HasMany extends AbstractRelationship
 		return parent::create_association($model, $attributes);
 	}
 	
-	public function load_eagerly($models=array(), $primary_keys, Table $table)
+	public function load_eagerly(&$models=array(), $primary_keys, Table $table)
 	{
 		$this->set_keys($table->class->name);
 		$values = array();
@@ -418,10 +418,12 @@ class HasMany extends AbstractRelationship
 			
 		$values = array($values);
 		$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string($fk,$values);
+		$options['models_for_eager_load'] =& $models;
 		
 		$class = $this->class_name;
 		$related_models = $class::find('all', $values, $options);
-		
+
+		/*
 		foreach ($models as $model)
 		{
 			$relationships = array();
@@ -434,8 +436,8 @@ class HasMany extends AbstractRelationship
 			}
 			
 			if (!empty($relationships))
-				$model->set_relationship($relationships, $this->attribute_name);	
-		}
+				$model->set_relationship($relationships, $this->attribute_na
+		}*/
 	}
 };
 
