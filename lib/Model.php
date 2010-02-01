@@ -715,6 +715,7 @@ class Model
 		$filter = array();
 
 		foreach ($attribute_names as $name)
+			$name = strtolower($name);
 			$filter[$name] = $this->$name;
 
 		return $filter;

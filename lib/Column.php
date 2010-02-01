@@ -20,7 +20,7 @@ class Column
 	const DATE		= 5;
 
 	/**
-	 * Map a type to an column type.
+	 * Map a type to a column type.
 	 * @static
 	 * @var array
 	 */
