@@ -9,7 +9,7 @@ use DateTime;
  * The base class for your models.
  *
  * Defining an ActiveRecord model for a table called people and orders:
- * 
+ *
  * <code>
  * CREATE TABLE people(
  *   id int primary key auto_increment,
@@ -26,7 +26,7 @@ use DateTime;
  * );
  * </code>
  *
- * <code> 
+ * <code>
  * class Person extends ActiveRecord\Model {
  *   static $belongs_to = array(
  *     array('parent', 'foreign_key' => 'parent_id', 'class_name' => 'Person')
@@ -62,7 +62,7 @@ use DateTime;
  * </code>
  *
  * For a more in-depth look at defining models, relationships, callbacks and many other things
- * please consult our {@link http://www.phpactiverecord.org/guides Guides}. 
+ * please consult our {@link http://www.phpactiverecord.org/guides Guides}.
  *
  * @package ActiveRecord
  * @see BelongsTo
@@ -715,7 +715,6 @@ class Model
 		$filter = array();
 
 		foreach ($attribute_names as $name)
-			$name = strtolower($name);
 			$filter[$name] = $this->$name;
 
 		return $filter;
