@@ -315,6 +315,7 @@ class Model
 	 */
 	public function &__get($name)
 	{
+		$name = strtolower($name);
 		// check for aliased attribute
 		if (array_key_exists($name, static::$alias_attribute))
 			$name = static::$alias_attribute[$name];

@@ -30,6 +30,13 @@ abstract class Connection
 	public $last_query;
 
 	/**
+	 * Array of all queries ran.
+	 *
+	 * @var string
+	 */
+	public $queries;
+
+	/**
 	 * Default PDO options to set for each connection.
 	 * @var array
 	 */
@@ -207,6 +214,7 @@ abstract class Connection
 			$GLOBALS['ACTIVERECORD_LOGGER']->log($sql, PEAR_LOG_INFO);
 
 		$this->last_query = $sql;
+		$this->queries[] = array('query' => $sql, 'values' => $values);
 
 		try {
 			if (!($sth = $this->connection->prepare($sql)))
@@ -223,6 +231,7 @@ abstract class Connection
 		} catch (PDOException $e) {
 			throw new DatabaseException($sth);
 		}
+
 		return $sth;
 	}
 
