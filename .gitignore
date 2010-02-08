@@ -3,3 +3,5 @@
 .settings
 *.log
 test/*.db
+test/helpers/config.php
+.gitignore
