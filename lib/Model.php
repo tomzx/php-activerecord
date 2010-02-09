@@ -339,7 +339,7 @@ class Model
 
 		if ($name == 'id')
 		{
-			if (count(($this->get_primary_key(true))) > 1)
+			if (count($this->get_primary_key()) > 1)
 				throw new Exception("TODO composite key support");
 
 			if (isset($this->attributes[$table->pk[0]]))
@@ -458,10 +458,9 @@ class Model
 	/**
 	 * Retrieve the primary key name.
 	 *
-	 * @param boolean $inflect Set to true to inflect the key name
 	 * @return string The primary key for the model
 	 */
-	public function get_primary_key($inflect=true)
+	public function get_primary_key()
 	{
 		return Table::load(get_class($this))->pk;
 	}
@@ -632,14 +631,11 @@ class Model
 			$table->insert($this->attributes);
 		$this->invoke_callback('after_create',false);
 
-		$pk = $this->get_primary_key(false);
+		$pk = $this->get_primary_key();
 
 		// if we've got an autoincrementing pk set it
-		if (count($pk) == 1 && $table->columns[$pk[0]]->auto_increment)
-		{
-			$inflector = Inflector::instance();
-			$this->attributes[$inflector->variablize($pk[0])] = $table->conn->insert_id($table->sequence);
-		}
+		if (count($pk) == 1 && $table->get_column_by_inflected_name($pk[0])->auto_increment)
+			$this->attributes[$pk[0]] = $table->conn->insert_id($table->sequence);
 
 		$this->__new_record = false;
 		return true;
@@ -928,6 +924,9 @@ class Model
 	 * SomeModel::find_by_first_name_and_last_name('Tito','the Grief');
 	 * SomeModel::find_by_first_name_or_last_name('Tito','the Grief');
 	 * SomeModel::find_all_by_last_name('Smith');
+	 * SomeModel::count_by_name('Bob')
+	 * SomeModel::count_by_name_or_state('Bob','VA')
+	 * SomeModel::count_by_name_and_state('Bob','VA')
 	 * </code>
 	 *
 	 * You can also create the model if the find call returned no results:
@@ -984,6 +983,11 @@ class Model
 		{
 			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(substr($method,12),$args,static::$alias_attribute);
 			return static::find('all',$options);
+		}
+		elseif (substr($method,0,8) === 'count_by')
+		{
+			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(substr($method,9),$args,static::$alias_attribute);
+			return static::count($options);
 		}
 
 		throw new ActiveRecordException("Call to undefined method: $method");
