@@ -461,7 +461,7 @@ class Validations
 				$too_long =  isset($options['message']) ? $options['message'] : $options['too_long'];
 
 				$too_short = str_replace('%d', $range[0], $too_short);
-				$too_long = str_replace('%d', $range[0], $too_long);
+				$too_long = str_replace('%d', $range[1], $too_long);
 
 				if (strlen($this->model->$attribute) < (int)$range[0])
 					$this->record->add($attribute, $too_short);
@@ -512,7 +512,8 @@ class Validations
 	 * <code>
 	 * class Person extends ActiveRecord\Model {
 	 *   static $validates_uniqueness_of = array(
-	 *     array('name')
+	 *     array('name'),
+	 *     array(array('blah','bleh'), 'message' => 'blech')
 	 *   );
 	 * }
 	 * </code>
@@ -531,13 +532,38 @@ class Validations
 			$pk = $this->model->get_primary_key();
 			$pk_value = $this->model->$pk[0];
 
-			if ($pk_value === null)
-				$conditions = array("{$pk[0]} is not null and {$options[0]}=?",$this->model->$options[0]);
+			if (is_array($options[0]))
+			{
+				$add_record = join("_and_", $options[0]);
+				$fields = $options[0];	
+			}
 			else
-				$conditions = array("{$pk[0]}!=? and {$options[0]}=?",$pk_value,$this->model->$options[0]);
+			{
+				$add_record = $options[0];
+				$fields = array($options[0]);
+			}
+
+			$sql = "";
+			$conditions = array("");
+
+			if ($pk_value === null)
+				$sql = "{$pk[0]} is not null";
+			else
+			{
+				$sql = "{$pk[0]}!=?";
+				array_push($conditions,$pk_value);
+			}
+
+			foreach ($fields as $field)
+			{
+				$sql .= " and {$field}=?";
+				array_push($conditions,$this->model->$field);
+			}
+
+			$conditions[0] = $sql;
 
 			if ($this->model->exists(array('conditions' => $conditions)))
-				$this->record->add($options[0], $options['message']);
+				$this->record->add($add_record, $options['message']);
 		}
 	}
 
@@ -650,10 +676,10 @@ class Errors implements IteratorAggregate
 	 */
 	public function add_on_blank($attribute, $msg)
 	{
-		if (is_null($msg))
-			$msg = self :: $DEFAULT_ERROR_MESSAGES['blank'];
+		if (!$msg)
+			$msg = self::$DEFAULT_ERROR_MESSAGES['blank'];
 
-		if (!strlen($this->model->$attribute))
+		if (!$this->model->$attribute)
 			$this->add($attribute, $msg);
 	}
 
