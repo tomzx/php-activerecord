@@ -92,29 +92,49 @@ class Validations
 	{
 		$this->model = $model;
 		$this->record = new Errors($this->model);
+		$this->validators = array_intersect(array_keys(Reflections::instance()->get(get_class($this->model))->getStaticProperties()), self::$VALIDATION_FUNCTIONS);
+	}
+
+	/**
+	 * Returns validator data.
+	 *
+	 * @return array
+	 */
+	public function rules()
+	{
+		$data = array();
+		$reflection = Reflections::instance()->get(get_class($this->model));
+
+		foreach ($this->validators as $validate)
+		{
+			$attrs = $reflection->getStaticPropertyValue($validate);
+
+			foreach ($attrs as $attr)
+			{
+				$field = $attr[0];
+
+				if (!is_array($data[$field]))
+					$data[$field] = array();
+
+				$attr['validator'] = $validate;
+				unset($attr[0]);
+				array_push($data[$field],$attr);
+			}
+		}
+		return $data;
 	}
 
 	/**
 	 * Runs the validators.
+	 * 
 	 * @return Errors the validation errors if any
 	 */
 	public function validate()
 	{
 		$reflection = Reflections::instance()->get(get_class($this->model));
 
-		// create array of validators to use from valid functions merged with the static properties
-		$this->validators = array_intersect(array_keys($reflection->getStaticProperties()), self::$VALIDATION_FUNCTIONS);
-
-		if (empty($this->validators))
-			return $this->record;
-
-		$inflector = Inflector :: instance();
-
 		foreach ($this->validators as $validate)
-		{
-			$func =	$inflector->variablize($validate);
-			$this->$func($reflection->getStaticPropertyValue($validate));
-		}
+			$this->$validate($reflection->getStaticPropertyValue($validate));
 
 		return $this->record;
 	}
