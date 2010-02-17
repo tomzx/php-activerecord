@@ -14,6 +14,10 @@ require 'lib/Reflections.php';
 require 'lib/Inflector.php';
 require 'lib/CallBack.php';
 require 'lib/Exceptions.php';
+require '../../php-i18n/I18n.php';
+
+use I18n\I18n;
+I18n::push_load_path(dirname(__FILE__) . '/lib/locales/en.yml');
 
 spl_autoload_register('activerecord_autoload');
 

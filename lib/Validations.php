@@ -12,6 +12,8 @@ namespace ActiveRecord;
 use ActiveRecord\Model;
 use IteratorAggregate;
 use ArrayIterator;
+use Closure;
+use I18n\I18n;
 
 /**
  * Manages validations for a {@link Model}.
@@ -126,7 +128,7 @@ class Validations
 
 	/**
 	 * Runs the validators.
-	 * 
+	 *
 	 * @return Errors the validation errors if any
 	 */
 	public function validate()
@@ -161,7 +163,7 @@ class Validations
 	 */
 	public function validates_presence_of($attrs)
 	{
-		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array('message' => Errors::$DEFAULT_ERROR_MESSAGES['blank'], 'on' => 'save'));
+		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array('on' => 'save'));
 
 		foreach ($attrs as $attr)
 		{
@@ -216,7 +218,7 @@ class Validations
 	 */
 	public function validates_inclusion_or_exclusion_of($type, $attrs)
 	{
-		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array('message' => Errors::$DEFAULT_ERROR_MESSAGES[$type], 'on' => 'save'));
+		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array('on' => 'save'));
 
 		foreach ($attrs as $attr)
 		{
@@ -232,13 +234,11 @@ class Validations
 			if (!is_array($enum))
 				array($enum);
 
-			$message = str_replace('%s', $var, $options['message']);
-
 			if ($this->is_null_with_option($var, $options) || $this->is_blank_with_option($var, $options))
 				continue;
 
 			if (('inclusion' == $type && !in_array($var, $enum)) || ('exclusion' == $type && in_array($var, $enum)))
-				$this->record->add($attribute, $message);
+				$this->record->add($attribute, $type, array('value' => $var));
 		}
 	}
 
@@ -291,19 +291,19 @@ class Validations
 				if (preg_match('/\A[+-]?\d+\Z/', (string)($var)))
 					break;
 
-				if (isset($options['message']))
-					$message = $options['message'];
-				else
-					$message = Errors::$DEFAULT_ERROR_MESSAGES['not_a_number'];
+				// if (isset($options['message']))
+				// 					$message = $options['message'];
+				// 				else
+				// 					$message = Errors::$DEFAULT_ERROR_MESSAGES['not_a_number'];
 
-				$this->record->add($attribute, $message);
+				$this->record->add($attribute, 'not_a_number', array('value' => $var));
 				continue;
 			}
 			else
 			{
 				if (!is_numeric($var))
 				{
-					$this->record->add($attribute, Errors::$DEFAULT_ERROR_MESSAGES['not_a_number']);
+					$this->record->add($attribute, 'not_a_number', array('value' => $var));
 					continue;
 				}
 
@@ -321,37 +321,37 @@ class Validations
 					if (!is_numeric($option_value))
 						throw new  ValidationsArgumentError("$option must be a number");
 
-					if (isset($options['message']))
-						$message = $options['message'];
-					else
-						$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
+					// if (isset($options['message']))
+					// 	$message = $options['message'];
+					// else
+					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
 
-					$message = str_replace('%d', $option_value, $message);
+					// $message = str_replace('%d', $option_value, $message);
 
 					if ('greater_than' == $option && !($var > $option_value))
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, $option, array('value' => $var));
 
 					elseif ('greater_than_or_equal_to' == $option && !($var >= $option_value))
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, $option, array('value' => $var));
 
 					elseif ('equal_to' == $option && !($var == $option_value))
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, $option, array('value' => $var));
 
 					elseif ('less_than' == $option && !($var < $option_value))
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, $option, array('value' => $var));
 
 					elseif ('less_than_or_equal_to' == $option && !($var <= $option_value))
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, $option, array('value' => $var));
 				}
 				else
 				{
-					if (isset($options['message']))
-						$message = $options['message'];
-					else
-						$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
+					// if (isset($options['message']))
+					// 	$message = $options['message'];
+					// else
+					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
 
 					if ( ('odd' == $option && !( Utils::is_odd($var))) || ('even' == $option && ( Utils::is_odd($var))))
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, $option, array('value' => $var));
 				}
 			}
 		}
@@ -389,7 +389,7 @@ class Validations
 	 */
 	public function validates_format_of($attrs)
 	{
-		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array('message' => Errors::$DEFAULT_ERROR_MESSAGES['invalid'], 'on' => 'save', 'with' => null));
+		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array('on' => 'save', 'with' => null));
 
 		foreach ($attrs as $attr)
 		{
@@ -406,7 +406,7 @@ class Validations
 				continue;
 
 			if (!@preg_match($expression, $var))
-			$this->record->add($attribute, $options['message']);
+				$this->record->add($attribute, 'invalid', array('value' => $var));
 		}
 	}
 
@@ -433,11 +433,7 @@ class Validations
 	 */
 	public function validates_length_of($attrs)
 	{
-		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array(
-			'too_long'     => Errors::$DEFAULT_ERROR_MESSAGES['too_long'],
-			'too_short'    => Errors::$DEFAULT_ERROR_MESSAGES['too_short'],
-			'wrong_length' => Errors::$DEFAULT_ERROR_MESSAGES['wrong_length']
-		));
+		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS);
 
 		foreach ($attrs as $attr)
 		{
@@ -477,16 +473,16 @@ class Validations
 				if ((int)$range[0] <= 0 || (int)$range[1] <= 0)
 					throw new  ValidationsArgumentError("Range values cannot use signed integers.");
 
-				$too_short = isset($options['message']) ? $options['message'] : $options['too_short'];
-				$too_long =  isset($options['message']) ? $options['message'] : $options['too_long'];
+				// $too_short = isset($options['message']) ? $options['message'] : $options['too_short'];
+				// $too_long =  isset($options['message']) ? $options['message'] : $options['too_long'];
 
-				$too_short = str_replace('%d', $range[0], $too_short);
-				$too_long = str_replace('%d', $range[1], $too_long);
+				// $too_short = str_replace('%d', $range[0], $too_short);
+				// $too_long = str_replace('%d', $range[1], $too_long);
 
 				if (strlen($this->model->$attribute) < (int)$range[0])
-					$this->record->add($attribute, $too_short);
+					$this->record->add($attribute, 'too_short', array('count' => $range[0]));
 				elseif (strlen($this->model->$attribute) > (int)$range[1])
-					$this->record->add($attribute, $too_long);
+					$this->record->add($attribute, 'too_long', array('count' => $range[1]));
 			}
 
 			elseif ('is' == $range_option || 'minimum' == $range_option || 'maximum' == $range_option)
@@ -501,29 +497,34 @@ class Validations
 
 				if (!is_null($this->model->$attribute))
 				{
-					$messageOptions = array('is' => 'wrong_length', 'minimum' => 'too_short', 'maximum' => 'too_long');
+					// $messageOptions = array('is' => 'wrong_length', 'minimum' => 'too_short', 'maximum' => 'too_long');
 
-					if (isset($options[$messageOptions[$range_option]]))
-						$message = $options[$messageOptions[$range_option]];
-					else
-						$message = $options['message'];
+					// if (isset($options[$messageOptions[$range_option]]))
+					// 	$message = $options[$messageOptions[$range_option]];
+					// else
+					// 	$message = $options['message'];
 
-					$message = str_replace('%d', $option, $message);
+					// $message = str_replace('%d', $option, $message);
 					$attribute_value = $this->model->$attribute;
 					$len = strlen($attribute_value);
 					$value = (int)$attr[$range_option];
 
 					if ('maximum' == $range_option && $len > $value)
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, 'too_long', array('count' => $value));
 
 					if ('minimum' == $range_option && $len < $value)
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, 'too_short', array('count' => $value));
 
 					if ('is' == $range_option && $len !== $value)
-						$this->record->add($attribute, $message);
+						$this->record->add($attribute, 'is', array('count' => $value));
 				}
 			}
 		}
+		// if (count($this->record) > 1) {
+			// print_r($this->record);
+			// exit;
+		// }
+
 	}
 
 	/**
@@ -542,9 +543,7 @@ class Validations
 	 */
 	public function validates_uniqueness_of($attrs)
 	{
-		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS, array(
-			'message' => Errors::$DEFAULT_ERROR_MESSAGES['unique']
-		));
+		$configuration = array_merge(self::$DEFAULT_VALIDATION_OPTIONS);
 
 		foreach ($attrs as $attr)
 		{
@@ -555,7 +554,7 @@ class Validations
 			if (is_array($options[0]))
 			{
 				$add_record = join("_and_", $options[0]);
-				$fields = $options[0];	
+				$fields = $options[0];
 			}
 			else
 			{
@@ -583,7 +582,7 @@ class Validations
 			$conditions[0] = $sql;
 
 			if ($this->model->exists(array('conditions' => $conditions)))
-				$this->record->add($add_record, $options['message']);
+				$this->record->add($add_record, 'taken', array('value' => $this->model->$attr));
 		}
 	}
 
@@ -603,220 +602,492 @@ class Validations
  *
  * @package ActiveRecord
  */
-class Errors implements IteratorAggregate
+class Error
 {
-	private $model;
-	private $errors;
-
-	public static $DEFAULT_ERROR_MESSAGES = array(
-   		'inclusion'		=> "is not included in the list",
-     	'exclusion'		=> "is reserved",
-      	'invalid'		=> "is invalid",
-      	'confirmation'	=> "doesn't match confirmation",
-      	'accepted'		=> "must be accepted",
-      	'empty'			=> "can't be empty",
-      	'blank'			=> "can't be blank",
-      	'too_long'		=> "is too long (maximum is %d characters)",
-      	'too_short'		=> "is too short (minimum is %d characters)",
-      	'wrong_length'	=> "is the wrong length (should be %d characters)",
-      	'taken'			=> "has already been taken",
-      	'not_a_number'	=> "is not a number",
-      	'greater_than'	=> "must be greater than %d",
-      	'equal_to'		=> "must be equal to %d",
-      	'less_than'		=> "must be less than %d",
-      	'odd'			=> "must be odd",
-      	'even'			=> "must be even",
-		'unique'		=> "must be unique",
-      	'less_than_or_equal_to' => "must be less than or equal to %d",
-      	'greater_than_or_equal_to' => "must be greater than or equal to %d"
-   	);
-
-   	/**
-	 * Constructs an {@link Errors} object.
-	 *
-	 * @param Model $model The model the error is for
-	 * @return Errors
-   	 */
-	public function __construct(Model $model)
-	{
-		$this->model = $model;
-	}
+	// private $model;
+	// private $errors;
+	//
+	// public static $DEFAULT_ERROR_MESSAGES = array(
+	//    		'inclusion'		=> "is not included in the list",
+	//      	'exclusion'		=> "is reserved",
+	//       	'invalid'		=> "is invalid",
+	//       	'confirmation'	=> "doesn't match confirmation",
+	//       	'accepted'		=> "must be accepted",
+	//       	'empty'			=> "can't be empty",
+	//       	'blank'			=> "can't be blank",
+	//       	'too_long'		=> "is too long (maximum is %d characters)",
+	//       	'too_short'		=> "is too short (minimum is %d characters)",
+	//       	'wrong_length'	=> "is the wrong length (should be %d characters)",
+	//       	'taken'			=> "has already been taken",
+	//       	'not_a_number'	=> "is not a number",
+	//       	'greater_than'	=> "must be greater than %d",
+	//       	'equal_to'		=> "must be equal to %d",
+	//       	'less_than'		=> "must be less than %d",
+	//       	'odd'			=> "must be odd",
+	//       	'even'			=> "must be even",
+	// 	'unique'		=> "must be unique",
+	//       	'less_than_or_equal_to' => "must be less than or equal to %d",
+	//       	'greater_than_or_equal_to' => "must be greater than or equal to %d"
+	//    	);
+	//
+	//    	/**
+	//  * Constructs an {@link Errors} object.
+	//  *
+	//  * @param Model $model The model the error is for
+	//  * @return Errors
+	//    	 */
+	// public function __construct(Model $model)
+	// {
+	// 	$this->model = $model;
+	// }
+	//
+	// /**
+	//  * Add an error message.
+	//  *
+	//  * @param string $attribute Name of an attribute on the model
+	//  * @param string $msg The error message
+	//  */
+	// public function add($attribute, $msg)
+	// {
+	// 	if (is_null($msg))
+	// 		$msg = self :: $DEFAULT_ERROR_MESSAGES['invalid'];
+	//
+	// 	if (!isset($this->errors[$attribute]))
+	// 		$this->errors[$attribute] = array($msg);
+	// 	else
+	// 		$this->errors[$attribute][] = $msg;
+	// }
+	//
+	// /**
+	//  * Adds an error message only if the attribute value is {@link http://www.php.net/empty empty}.
+	//  *
+	//  * @param string $attribute Name of an attribute on the model
+	//  * @param string $msg The error message
+	//  */
+	// public function add_on_empty($attribute, $msg)
+	// {
+	// 	if (empty($msg))
+	// 		$msg = self::$DEFAULT_ERROR_MESSAGES['empty'];
+	//
+	// 	if (empty($this->model->$attribute))
+	// 		$this->add($attribute, $msg);
+	// }
+	//
+	// /**
+	//  * Retrieve error message for an attribute.
+	//  *
+	//  * @param string $attribute Name of an attribute on the model
+	//  * @return string
+	//  */
+	// public function __get($attribute)
+	// {
+	// 	if (!isset($this->errors[$attribute]))
+	// 		return null;
+	//
+	// 	return $this->errors[$attribute];
+	// }
+	//
+	// /**
+	//  * Adds the error message only if the attribute value was null or an empty string.
+	//  *
+	//  * @param string $attribute Name of an attribute on the model
+	//  * @param string $msg The error message
+	//  */
+	// public function add_on_blank($attribute, $msg)
+	// {
+	// 	if (!$msg)
+	// 		$msg = self::$DEFAULT_ERROR_MESSAGES['blank'];
+	//
+	// 	if (!$this->model->$attribute)
+	// 		$this->add($attribute, $msg);
+	// }
+	//
+	// /**
+	//  * Returns true if the specified attribute had any error messages.
+	//  *
+	//  * @param string $attribute Name of an attribute on the model
+	//  * @return boolean
+	//  */
+	// public function is_invalid($attribute)
+	// {
+	// 	return isset($this->errors[$attribute]);
+	// }
+	//
+	// /**
+	//  * Returns the error message for the specified attribute or null if none.
+	//  *
+	//  * @param string $attribute Name of an attribute on the model
+	//  * @return string
+	//  */
+	// public function on($attribute)
+	// {
+	// 	if (!isset($this->errors[$attribute]))
+	// 		return null;
+	//
+	// 	$errors = $this->errors[$attribute];
+	//
+	// 	if (null === $errors)
+	// 		return null;
+	// 	else
+	// 		return count($errors) == 1 ? $errors[0] : $errors;
+	// }
+	//
+	// /**
+	//  * Returns all the error messages as an array.
+	//  *
+	//  * <code>
+	//  * $model->errors->full_messages();
+	//  *
+	//  * # array(
+	//  * #  "Name can't be blank",
+	//  * #  "State is the wrong length (should be 2 chars)"
+	//  * # )
+	//  * </code>
+	//  *
+	//  * @param array $options Options for messages
+	//  * @return array
+	//  */
+	// public function full_messages()
+	// {
+	// 	// $full_messages = array();
+	// 	//
+	// 	// if ($this->errors)
+	// 	// {
+	// 	// 	foreach ($this->errors as $attribute => $messages)
+	// 	// 	{
+	// 	// 		foreach ($messages as $msg)
+	// 	// 		{
+	// 	// 			if (is_null($msg))
+	// 	// 				continue;
+	// 	//
+	// 	// 			$full_messages[] = Utils::human_attribute($attribute) . ' ' . $msg;
+	// 	// 		}
+	// 	// 	}
+	// 	// }
+	// 	// return $full_messages;
+	// }
+	//
+	// /**
+	//  * Returns true if there are no error messages.
+	//  * @return boolean
+	//  */
+	// public function is_empty()
+	// {
+	// 	return empty($this->errors);
+	// }
+	//
+	// /**
+	//  * Clears out all error messages.
+	//  */
+	// public function clear()
+	// {
+	// 	$this->errors = array();
+	// }
+	//
+	// /**
+	//  * Returns the number of error messages there are.
+	//  * @return int
+	//  */
+	// public function size()
+	// {
+	// 	if ($this->is_empty())
+	// 		return 0;
+	//
+	// 	$count = 0;
+	//
+	// 	foreach ($this->errors as $attribute => $error)
+	// 		$count += count($error);
+	//
+	// 	return $count;
+	// }
+	//
+	// /**
+	//  * Returns an iterator to the error messages.
+	//  *
+	//  * This will allow you to iterate over the {@link Errors} object using foreach.
+	//  *
+	//  * <code>
+	//  * foreach ($model->errors as $msg)
+	//  *   echo "$msg\n";
+	//  * </code>
+	//  *
+	//  * @return ArrayIterator
+	//  */
+	// public function getIterator()
+	// {
+	// 	return new ArrayIterator($this->full_messages());
+	// }
 
 	/**
-	 * Add an error message.
+	 * The model that is related to the error.
 	 *
-	 * @param string $attribute Name of an attribute on the model
-	 * @param string $msg The error message
+	 * @var string
 	 */
-	public function add($attribute, $msg)
-	{
-		if (is_null($msg))
-			$msg = self :: $DEFAULT_ERROR_MESSAGES['invalid'];
+	private $base;
+	/**
+	 * The attribute within the model that contains an error.
+	 *
+	 * @var string
+	 */
+	private $attribute;
+	/**
+	 * The kind of error there is with the model.
+	 * Example: too short, too long, etc.
+	 *
+	 * @var string
+	 */
+	public $type;
+	/**
+	 * Same as type.
+	 *
+	 * @var string
+	 */
+	private $message;
+	/**
+	 * Options given at the time of error creation.
+	 *
+	 * @var string
+	 */
+	private $options;
 
-		if (!isset($this->errors[$attribute]))
-			$this->errors[$attribute] = array($msg);
-		else
-			$this->errors[$attribute][] = $msg;
+	public function __construct(Model $base, $attribute, $type = null, $options = array())
+	{
+		$this->base = $base;
+		$this->attribute = $attribute;
+		if ($type !== null) {
+			$this->type = $type;
+		} else {
+			$this->type = 'invalid';
+		}
+		$this->options = $options;
+		if (isset($options['message'])) {
+			$this->message = $options['message'];
+			unset($options['message']);
+		} else {
+			$this->message = $type;
+		}
 	}
 
-	/**
-	 * Adds an error message only if the attribute value is {@link http://www.php.net/empty empty}.
-	 *
-	 * @param string $attribute Name of an attribute on the model
-	 * @param string $msg The error message
-	 */
-	public function add_on_empty($attribute, $msg)
+	public function message()
 	{
-		if (empty($msg))
-			$msg = self::$DEFAULT_ERROR_MESSAGES['empty'];
-
-		if (empty($this->model->$attribute))
-			$this->add($attribute, $msg);
+		return $this->generate_message($this->default_options());
 	}
 
-	/**
-	 * Retrieve error message for an attribute.
-	 *
-	 * @param string $attribute Name of an attribute on the model
-	 * @return string
-	 */
-	public function __get($attribute)
+	public function full_message()
 	{
-		if (!isset($this->errors[$attribute]))
+		if ($this->attribute === 'base') {
+			return $this->message;
+		} else {
+			$this->generate_full_message($this->default_options());
+		}
+	}
+
+	public function value()
+	{
+		if (array_key_exists($attribute, $this->base)) {
+			$this->base[$attribute];
+		} else {
 			return null;
-
-		return $this->errors[$attribute];
+		}
 	}
 
-	/**
-	 * Adds the error message only if the attribute value was null or an empty string.
-	 *
-	 * @param string $attribute Name of an attribute on the model
-	 * @param string $msg The error message
-	 */
-	public function add_on_blank($attribute, $msg)
+	private function generate_message($options = array())
 	{
-		if (!$msg)
-			$msg = self::$DEFAULT_ERROR_MESSAGES['blank'];
+		$class_name = classify(get_class($this->base));
 
-		if (!$this->model->$attribute)
-			$this->add($attribute, $msg);
+		$keys = array(
+			"models.$class_name.attributes.{$this->attribute}.{$this->message}",
+			"models.$class_name.{$this->message}",
+			"messages.{$this->message}");
+
+		$options['default'] = $keys;
+		return I18n::translate(array_shift($keys), $options);
 	}
 
-	/**
-	 * Returns true if the specified attribute had any error messages.
-	 *
-	 * @param string $attribute Name of an attribute on the model
-	 * @return boolean
-	 */
+	private function generate_full_message($options = array())
+	{
+		$class_name = classify(get_class($this->base));
+
+		// uses symbols, so I'm not sure
+		$keys = array(
+			"full_messages.{$this->message}",
+			"full_messages.format",
+			"{{attribute}} {{message}}");
+
+		$options['default'] = $keys;
+		$options['message'] = $this->message;
+		return I18n::translate(array_shift($keys), $options);
+	}
+
+	private function default_options()
+	{
+		$options['scope'] = array('activerecord', 'errors');
+		$options['model'] = classify(get_class($this->base));
+		$options['attribute'] = Utils::human_attribute($this->attribute);
+		$options['value'] = null;
+		return $options;
+	}
+
+	public function to_s()
+	{
+		$this->message();
+	}
+};
+
+class Errors
+{
+	private $errors;
+	private $base;
+
+	// public function default_error_messages()
+	// {
+	//
+	// }
+
+	public function __construct($base)
+	{
+		$this->base = $base;
+		$this->clear();
+	}
+
+	public function add_to_base($message)
+	{
+		$this->add($this->base, $message);
+	}
+
+	public function add($attribute, $message = null, $options = array())
+	{
+		// if ($message === null)
+		// 	$msg = self::$DEFAULT_ERROR_MESSAGES['invalid'];
+
+		if (is_a($message, 'Error')) {
+			list($error, $message) = array($message, null);
+		}
+
+		$error = new Error($this->base, $attribute, $message, $options);
+
+		// if (!isset($this->errors[$attribute]))
+			// $this->errors[$attribute] = array($error);
+		// else
+			$this->errors[$attribute][] = $error;
+	}
+
+	public function add_on_empty($attributes, $custom_message = null)
+	{
+		$attributes = array($attributes);
+		$attributes = array_flatten($attributes);
+
+		foreach ($attributes as $attribute) {
+			if (empty($this->model->$attribute))
+				$this->add($attribute, 'empty');
+		}
+
+		// if ($custom_message === null)
+			// $msg = self::$DEFAULT_ERROR_MESSAGES['empty'];
+	}
+
+	public function add_on_blank($attributes, $custom_message = null)
+	{
+		$attributes = array($attributes);
+		$attributes = array_flatten($attributes);
+
+		foreach ($attributes as $attribute) {
+			if (!$this->base->$attribute)
+				$this->add($attribute, 'blank');
+		}
+
+		// if ($custom_message === null)
+			// $msg = self::$DEFAULT_ERROR_MESSAGES['blank'];
+	}
+
 	public function is_invalid($attribute)
 	{
 		return isset($this->errors[$attribute]);
 	}
 
-	/**
-	 * Returns the error message for the specified attribute or null if none.
-	 *
-	 * @param string $attribute Name of an attribute on the model
-	 * @return string
-	 */
 	public function on($attribute)
 	{
-		if (!isset($this->errors[$attribute]))
+		if (!array_key_exists($attribute, $this->errors))
 			return null;
 
 		$errors = $this->errors[$attribute];
 
-		if (null === $errors)
+		if (null === $errors) {
 			return null;
-		else
-			return count($errors) == 1 ? $errors[0] : $errors;
+		} else {
+			foreach ($errors as &$error) {
+				$error = $error->to_s();
+			}
+			return count($errors) === 1 ? $errors[0] : $errors;
+		}
 	}
 
-	/**
-	 * Returns all the error messages as an array.
-	 *
-	 * <code>
-	 * $model->errors->full_messages();
-	 *
-	 * # array(
-	 * #  "Name can't be blank",
-	 * #  "State is the wrong length (should be 2 chars)"
-	 * # )
-	 * </code>
-	 *
-	 * @param array $options Options for messages
-	 * @return array
-	 */
-	public function full_messages()
+	public function on_base()
 	{
-		$full_messages = array();
+		return $this->on($this->base);
+	}
 
-		if ($this->errors)
-		{
-			foreach ($this->errors as $attribute => $messages)
-			{
-				foreach ($messages as $msg)
-				{
-					if (is_null($msg))
-						continue;
-
-					$full_messages[] = Utils::human_attribute($attribute) . ' ' . $msg;
-				}
+	public function _each(Closure $closure)
+	{
+		foreach ($this->errors as $attribute => $errors) {
+			foreach ($errors as $error) {
+				$closure($attribute, $error->message());
 			}
 		}
-		return $full_messages;
 	}
 
-	/**
-	 * Returns true if there are no error messages.
-	 * @return boolean
-	 */
+	public function each_error(Closure $closure)
+	{
+		foreach ($this->errors as $attribute => $errors) {
+			foreach ($errors as $error) {
+				$closure($attribute, $error);
+			}
+		}
+	}
+
+	public function each_full(Closure $closure)
+	{
+		foreach ($this->full_messages() as $message) {
+			$closure($message);
+		}
+	}
+
+	public function full_messages($options = array())
+	{
+		// $full_messages = array();
+		//
+		foreach ($this->errors as $errors)
+		{
+			foreach ($errors as $error)
+			{
+				// if (is_null($msg))
+				// 	continue;
+				//
+				// $full_messages[] = Utils::human_attribute($attribute) . ' ' . $msg;
+				$full_messages[] = $error->full_message();
+			}
+		}
+		// return $full_messages;
+	}
+
 	public function is_empty()
 	{
 		return empty($this->errors);
 	}
 
-	/**
-	 * Clears out all error messages.
-	 */
 	public function clear()
 	{
 		$this->errors = array();
 	}
 
-	/**
-	 * Returns the number of error messages there are.
-	 * @return int
-	 */
 	public function size()
 	{
-		if ($this->is_empty())
-			return 0;
-
-		$count = 0;
-
-		foreach ($this->errors as $attribute => $error)
-			$count += count($error);
-
-		return $count;
+		$size = 0;
+		foreach ($this->errors as $error) {
+			$size += count($error);
+		}
+		return $size;
 	}
+}
 
-	/**
-	 * Returns an iterator to the error messages.
-	 *
-	 * This will allow you to iterate over the {@link Errors} object using foreach.
-	 *
-	 * <code>
-	 * foreach ($model->errors as $msg)
-	 *   echo "$msg\n";
-	 * </code>
-	 *
-	 * @return ArrayIterator
-	 */
-	public function getIterator()
-	{
-		return new ArrayIterator($this->full_messages());
-	}
-};
 ?>

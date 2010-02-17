@@ -19,7 +19,7 @@ ActiveRecord\Config::initialize(function($cfg)
 //		'pgsql'		=> 'pgsql://test:test@127.0.0.1/test',
 //		'oci'		=> 'oci://test:test@127.0.0.1/xe',
 //		'sqlite'	=> 'sqlite://test.db'));
-);
+));
 	$cfg->set_default_connection('mysql');
 });
 ?>

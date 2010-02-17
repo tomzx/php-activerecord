@@ -20,7 +20,7 @@ class ValidatesLengthOfTest extends DatabaseTest
 		parent::set_up($connection_name);
 		BookLength::$validates_length_of[0] = array('name', 'allow_blank' => false, 'allow_null' => false);
 	}
-	
+
 	public function test_within()
 	{
 		BookLength::$validates_length_of[0]['within'] = array(1, 5);
