@@ -6,6 +6,8 @@ require_once 'DatabaseTest.php';
 require_once 'AdapterTest.php';
 require_once dirname(__FILE__) . '/../../ActiveRecord.php';
 
+\I18n\I18n::push_load_path(dirname(__FILE__) . '/../locales/en.yml');
+
 $GLOBALS['ACTIVERECORD_LOGGER'] = Log::singleton('file', dirname(__FILE__) . '/../log/query.log','ident',array('mode' => 0664, 'timeFormat' =>  '%Y-%m-%d %H:%M:%S'));
 
 if (getenv('LOG') !== 'false')

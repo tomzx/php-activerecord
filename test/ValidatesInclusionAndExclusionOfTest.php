@@ -140,7 +140,7 @@ class ValidatesInclusionAndExclusionOfTest extends DatabaseTest
 
 	public function test_custom_message()
 	{
-		$msg = 'is using a custom message.';
+		$msg = 'custom';
 		BookInclusion::$validates_inclusion_of[0]['message'] = $msg;
 		BookExclusion::$validates_exclusion_of[0]['message'] = $msg;
 

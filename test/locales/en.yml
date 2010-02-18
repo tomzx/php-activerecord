@@ -1,0 +1,20 @@
+en:
+  activerecord:
+    errors:
+      models:
+        BookPresence:
+          attributes:
+            name:
+              custom: "is using a custom message."
+        BookFormat:
+          attributes:
+            name:
+              custom: "is using a custom message."
+        BookInclusion:
+          attributes:
+            name:
+              custom: "is using a custom message."
+        BookExclusion:
+          attributes:
+            name:
+              custom: "is using a custom message."

@@ -4,6 +4,7 @@
  */
 namespace ActiveRecord;
 use DateTime;
+use I18n\I18n;
 
 /**
  * The base class for your models.
@@ -467,9 +468,9 @@ class Model
 
 	/**
 	 * Returns array of validator data for this Model.
-	 * 
+	 *
 	 * Will return an array looking like:
-	 * 
+	 *
 	 * <code>
 	 * array(
 	 *   'name' => array(
@@ -1474,6 +1475,23 @@ class Model
 			$connection->rollback();
 			throw $e;
 		}
+	}
+
+	public function human_attribute_name($attribute_key_name, $options = array())
+	{
+		//todo
+		// should loop here, but not currently
+		$class_name = classify(get_class($this));
+		$defaults = "$class_name.$attribute_key_name";
+		if ($options['default'])
+			$defaults[] = $options['default'];
+		$defaults = array_flatten($defaults);
+		if (!isset($options['count']))
+			$options['count'] = 1;
+		$key = array_shift($defaults);
+		$options['default'] = $defaults;
+		$options['scope'] = array('activerecord', 'attributes');
+		return I18n::translate($key, $options);
 	}
 };
 ?>

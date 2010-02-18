@@ -100,7 +100,7 @@ class ValidatesFormatOfTest extends DatabaseTest
 
 	public function test_custom_message()
 	{
-		BookFormat::$validates_format_of[0]['message'] = 'is using a custom message.';
+		BookFormat::$validates_format_of[0]['message'] = 'custom';
 		BookFormat::$validates_format_of[0]['with'] = '/[^0-9]/';
 
 		$book = new BookFormat;

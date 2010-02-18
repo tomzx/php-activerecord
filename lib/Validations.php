@@ -238,7 +238,7 @@ class Validations
 				continue;
 
 			if (('inclusion' == $type && !in_array($var, $enum)) || ('exclusion' == $type && in_array($var, $enum)))
-				$this->record->add($attribute, $type, array('value' => $var));
+				$this->record->add($attribute, $type, array('default' => $options['message'], 'value' => $var));
 		}
 	}
 
@@ -296,14 +296,14 @@ class Validations
 				// 				else
 				// 					$message = Errors::$DEFAULT_ERROR_MESSAGES['not_a_number'];
 
-				$this->record->add($attribute, 'not_a_number', array('value' => $var));
+				$this->record->add($attribute, 'not_a_number', array('default' => $options['message'], 'value' => $var));
 				continue;
 			}
 			else
 			{
 				if (!is_numeric($var))
 				{
-					$this->record->add($attribute, 'not_a_number', array('value' => $var));
+					$this->record->add($attribute, 'not_a_number', array('default' => $options['message'], 'value' => $var));
 					continue;
 				}
 
@@ -329,19 +329,19 @@ class Validations
 					// $message = str_replace('%d', $option_value, $message);
 
 					if ('greater_than' == $option && !($var > $option_value))
-						$this->record->add($attribute, $option, array('value' => $var));
+						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('greater_than_or_equal_to' == $option && !($var >= $option_value))
-						$this->record->add($attribute, $option, array('value' => $var));
+						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('equal_to' == $option && !($var == $option_value))
-						$this->record->add($attribute, $option, array('value' => $var));
+						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('less_than' == $option && !($var < $option_value))
-						$this->record->add($attribute, $option, array('value' => $var));
+						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('less_than_or_equal_to' == $option && !($var <= $option_value))
-						$this->record->add($attribute, $option, array('value' => $var));
+						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
 				else
 				{
@@ -350,8 +350,8 @@ class Validations
 					// else
 					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
 
-					if ( ('odd' == $option && !( Utils::is_odd($var))) || ('even' == $option && ( Utils::is_odd($var))))
-						$this->record->add($attribute, $option, array('value' => $var));
+					if (('odd' == $option && !( Utils::is_odd($var))) || ('even' == $option && (Utils::is_odd($var))))
+						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
 			}
 		}
@@ -406,7 +406,7 @@ class Validations
 				continue;
 
 			if (!@preg_match($expression, $var))
-				$this->record->add($attribute, 'invalid', array('value' => $var));
+				$this->record->add($attribute, 'invalid', array('default' => $options['message'], 'value' => $var));
 		}
 	}
 
@@ -456,6 +456,12 @@ class Validations
 			$attribute = $options[0];
 			$var = $this->model->$attribute;
 			$range_option = $range_options[0];
+			if (isset($options['message'])) {
+				$custom_message = $options['message'];
+			} else {
+				// todo find correct custom message
+				$custom_message = null;
+			}
 
 			if ($this->is_null_with_option($var, $options) || $this->is_blank_with_option($var, $options))
 				continue;
@@ -480,9 +486,9 @@ class Validations
 				// $too_long = str_replace('%d', $range[1], $too_long);
 
 				if (strlen($this->model->$attribute) < (int)$range[0])
-					$this->record->add($attribute, 'too_short', array('count' => $range[0]));
+					$this->record->add($attribute, 'too_short', array('default' => $custom_message, 'count' => $range[0]));
 				elseif (strlen($this->model->$attribute) > (int)$range[1])
-					$this->record->add($attribute, 'too_long', array('count' => $range[1]));
+					$this->record->add($attribute, 'too_long', array('default' => $custom_message, 'count' => $range[1]));
 			}
 
 			elseif ('is' == $range_option || 'minimum' == $range_option || 'maximum' == $range_option)
@@ -510,21 +516,16 @@ class Validations
 					$value = (int)$attr[$range_option];
 
 					if ('maximum' == $range_option && $len > $value)
-						$this->record->add($attribute, 'too_long', array('count' => $value));
+						$this->record->add($attribute, 'too_long', array('default' => $custom_message, 'count' => $value));
 
 					if ('minimum' == $range_option && $len < $value)
-						$this->record->add($attribute, 'too_short', array('count' => $value));
+						$this->record->add($attribute, 'too_short', array('default' => $custom_message, 'count' => $value));
 
 					if ('is' == $range_option && $len !== $value)
-						$this->record->add($attribute, 'is', array('count' => $value));
+						$this->record->add($attribute, 'is', array('default' => $custom_message, 'count' => $value));
 				}
 			}
 		}
-		// if (count($this->record) > 1) {
-			// print_r($this->record);
-			// exit;
-		// }
-
 	}
 
 	/**
@@ -582,7 +583,7 @@ class Validations
 			$conditions[0] = $sql;
 
 			if ($this->model->exists(array('conditions' => $conditions)))
-				$this->record->add($add_record, 'taken', array('value' => $this->model->$attr));
+				$this->record->add($add_record, 'taken', array('default' => $custom_message, 'value' => $this->model->$attr));
 		}
 	}
 
@@ -870,22 +871,31 @@ class Error
 
 	public function message()
 	{
-		return $this->generate_message($this->default_options());
+		// if (is_string($this->type)) {
+			// return $this->type;
+		// } else {
+			return $this->generate_message($this->default_options());
+		// }
+	}
+
+	public function to_s()
+	{
+		return $this->message();
 	}
 
 	public function full_message()
 	{
-		if ($this->attribute === 'base') {
-			return $this->message;
-		} else {
-			$this->generate_full_message($this->default_options());
-		}
+		// if ($this->attribute === 'base') {
+			// return $this->message;
+		// } else {
+			return $this->generate_full_message($this->default_options());
+		// }
 	}
 
 	public function value()
 	{
 		if (array_key_exists($attribute, $this->base)) {
-			$this->base[$attribute];
+			return $this->base[$attribute];
 		} else {
 			return null;
 		}
@@ -899,6 +909,10 @@ class Error
 			"models.$class_name.attributes.{$this->attribute}.{$this->message}",
 			"models.$class_name.{$this->message}",
 			"messages.{$this->message}");
+
+		if (isset($options['default'])) {
+			$keys[] = $options['default'];
+		}
 
 		$options['default'] = $keys;
 		return I18n::translate(array_shift($keys), $options);
@@ -925,12 +939,10 @@ class Error
 		$options['model'] = classify(get_class($this->base));
 		$options['attribute'] = Utils::human_attribute($this->attribute);
 		$options['value'] = null;
-		return $options;
-	}
 
-	public function to_s()
-	{
-		$this->message();
+		$options = array_merge($options, $this->options);
+
+		return $options;
 	}
 };
 
@@ -944,7 +956,7 @@ class Errors
 	//
 	// }
 
-	public function __construct($base)
+	public function __construct(Model $base)
 	{
 		$this->base = $base;
 		$this->clear();
@@ -959,6 +971,10 @@ class Errors
 	{
 		// if ($message === null)
 		// 	$msg = self::$DEFAULT_ERROR_MESSAGES['invalid'];
+		if (isset($options['default'])) {
+			$options['message'] = $options['default'];
+			unset($options['default']);
+		}
 
 		if (is_a($message, 'Error')) {
 			list($error, $message) = array($message, null);
@@ -969,7 +985,7 @@ class Errors
 		// if (!isset($this->errors[$attribute]))
 			// $this->errors[$attribute] = array($error);
 		// else
-			$this->errors[$attribute][] = $error;
+		$this->errors[$attribute][] = $error;
 	}
 
 	public function add_on_empty($attributes, $custom_message = null)
@@ -978,8 +994,9 @@ class Errors
 		$attributes = array_flatten($attributes);
 
 		foreach ($attributes as $attribute) {
-			if (empty($this->model->$attribute))
-				$this->add($attribute, 'empty');
+			if (empty($this->model->$attribute)) {
+				$this->add($attribute, 'empty', array('default' => $custom_message));
+			}
 		}
 
 		// if ($custom_message === null)
@@ -992,8 +1009,9 @@ class Errors
 		$attributes = array_flatten($attributes);
 
 		foreach ($attributes as $attribute) {
-			if (!$this->base->$attribute)
-				$this->add($attribute, 'blank');
+			if (!$this->base->$attribute) {
+				$this->add($attribute, 'blank', array('default' => $custom_message));
+			}
 		}
 
 		// if ($custom_message === null)
@@ -1007,6 +1025,7 @@ class Errors
 
 	public function on($attribute)
 	{
+
 		if (!array_key_exists($attribute, $this->errors))
 			return null;
 
@@ -1015,9 +1034,11 @@ class Errors
 		if (null === $errors) {
 			return null;
 		} else {
+			// print_r($errors);
 			foreach ($errors as &$error) {
 				$error = $error->to_s();
 			}
+
 			return count($errors) === 1 ? $errors[0] : $errors;
 		}
 	}
@@ -1067,7 +1088,7 @@ class Errors
 				$full_messages[] = $error->full_message();
 			}
 		}
-		// return $full_messages;
+		return $full_messages;
 	}
 
 	public function is_empty()

@@ -38,7 +38,7 @@ class ValidatesPresenceOfTest extends DatabaseTest
 		$author = new AuthorPresence();
 		$this->assert_false($author->is_valid());
 	}
-	
+
 	public function test_invalid_null()
 	{
 		$book = new BookPresence(array('name' => null));
@@ -59,7 +59,7 @@ class ValidatesPresenceOfTest extends DatabaseTest
 
 	public function test_custom_message()
 	{
-		BookPresence::$validates_presence_of[0]['message'] = 'is using a custom message.';
+		BookPresence::$validates_presence_of[0]['message'] = 'custom';
 
 		$book = new BookPresence(array('name' => null));
 		$book->is_valid();
