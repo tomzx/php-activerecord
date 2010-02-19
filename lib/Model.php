@@ -1482,15 +1482,29 @@ class Model
 		//todo
 		// should loop here, but not currently
 		$class_name = classify(get_class($this));
-		$defaults = "$class_name.$attribute_key_name";
-		if ($options['default'])
+		$defaults = array("$class_name.$attribute_key_name");
+		if (isset($options['default'])) {
 			$defaults[] = $options['default'];
+		}
 		$defaults = array_flatten($defaults);
-		if (!isset($options['count']))
+		$defaults[] = Inflector::instance()->underscorify($attribute_key_name);
+		if (!isset($options['count'])) {
 			$options['count'] = 1;
+		}
 		$key = array_shift($defaults);
 		$options['default'] = $defaults;
 		$options['scope'] = array('activerecord', 'attributes');
+		return I18n::translate($key, $options);
+	}
+
+	public function human_name($options = array())
+	{
+		$defaults[] = classify(get_class($this));
+
+		$key = array_shift($defaults);
+		$options['scope'] = array('activerecord', 'models');
+		$options['count'] = 1;
+		$options['default'] = $defaults;
 		return I18n::translate($key, $options);
 	}
 };

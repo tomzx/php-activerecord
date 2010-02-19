@@ -18,3 +18,5 @@ en:
           attributes:
             name:
               custom: "is using a custom message."
+    attributes:
+      name: Name

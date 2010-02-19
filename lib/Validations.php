@@ -14,6 +14,7 @@ use IteratorAggregate;
 use ArrayIterator;
 use Closure;
 use I18n\I18n;
+use I18n\Symbol;
 
 /**
  * Manages validations for a {@link Model}.
@@ -238,7 +239,7 @@ class Validations
 				continue;
 
 			if (('inclusion' == $type && !in_array($var, $enum)) || ('exclusion' == $type && in_array($var, $enum)))
-				$this->record->add($attribute, $type, array('default' => $options['message'], 'value' => $var));
+				$this->record->add($attribute, new Symbol($type), array('default' => $options['message'], 'value' => $var));
 		}
 	}
 
@@ -296,14 +297,14 @@ class Validations
 				// 				else
 				// 					$message = Errors::$DEFAULT_ERROR_MESSAGES['not_a_number'];
 
-				$this->record->add($attribute, 'not_a_number', array('default' => $options['message'], 'value' => $var));
+				$this->record->add($attribute, new Symbol('not_a_number'), array('default' => $options['message'], 'value' => $var));
 				continue;
 			}
 			else
 			{
 				if (!is_numeric($var))
 				{
-					$this->record->add($attribute, 'not_a_number', array('default' => $options['message'], 'value' => $var));
+					$this->record->add($attribute, new Symbol('not_a_number'), array('default' => $options['message'], 'value' => $var));
 					continue;
 				}
 
@@ -329,19 +330,19 @@ class Validations
 					// $message = str_replace('%d', $option_value, $message);
 
 					if ('greater_than' == $option && !($var > $option_value))
-						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('greater_than_or_equal_to' == $option && !($var >= $option_value))
-						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('equal_to' == $option && !($var == $option_value))
-						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('less_than' == $option && !($var < $option_value))
-						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('less_than_or_equal_to' == $option && !($var <= $option_value))
-						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
 				else
 				{
@@ -351,7 +352,7 @@ class Validations
 					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
 
 					if (('odd' == $option && !( Utils::is_odd($var))) || ('even' == $option && (Utils::is_odd($var))))
-						$this->record->add($attribute, $option, array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
 			}
 		}
@@ -406,7 +407,7 @@ class Validations
 				continue;
 
 			if (!@preg_match($expression, $var))
-				$this->record->add($attribute, 'invalid', array('default' => $options['message'], 'value' => $var));
+				$this->record->add($attribute, new Symbol('invalid'), array('default' => $options['message'], 'value' => $var));
 		}
 	}
 
@@ -486,9 +487,9 @@ class Validations
 				// $too_long = str_replace('%d', $range[1], $too_long);
 
 				if (strlen($this->model->$attribute) < (int)$range[0])
-					$this->record->add($attribute, 'too_short', array('default' => $custom_message, 'count' => $range[0]));
+					$this->record->add($attribute, new Symbol('too_short'), array('default' => $custom_message, 'count' => $range[0]));
 				elseif (strlen($this->model->$attribute) > (int)$range[1])
-					$this->record->add($attribute, 'too_long', array('default' => $custom_message, 'count' => $range[1]));
+					$this->record->add($attribute, new Symbol('too_long'), array('default' => $custom_message, 'count' => $range[1]));
 			}
 
 			elseif ('is' == $range_option || 'minimum' == $range_option || 'maximum' == $range_option)
@@ -516,13 +517,13 @@ class Validations
 					$value = (int)$attr[$range_option];
 
 					if ('maximum' == $range_option && $len > $value)
-						$this->record->add($attribute, 'too_long', array('default' => $custom_message, 'count' => $value));
+						$this->record->add($attribute, new Symbol('too_long'), array('default' => $custom_message, 'count' => $value));
 
 					if ('minimum' == $range_option && $len < $value)
-						$this->record->add($attribute, 'too_short', array('default' => $custom_message, 'count' => $value));
+						$this->record->add($attribute, new Symbol('too_short'), array('default' => $custom_message, 'count' => $value));
 
 					if ('is' == $range_option && $len !== $value)
-						$this->record->add($attribute, 'is', array('default' => $custom_message, 'count' => $value));
+						$this->record->add($attribute, new Symbol('is'), array('default' => $custom_message, 'count' => $value));
 				}
 			}
 		}
@@ -583,7 +584,7 @@ class Validations
 			$conditions[0] = $sql;
 
 			if ($this->model->exists(array('conditions' => $conditions)))
-				$this->record->add($add_record, 'taken', array('default' => $custom_message, 'value' => $this->model->$attr));
+				$this->record->add($add_record, new Symbol('taken'), array('default' => $custom_message, 'value' => $this->model->$attr));
 		}
 	}
 
@@ -858,24 +859,24 @@ class Error
 		if ($type !== null) {
 			$this->type = $type;
 		} else {
-			$this->type = 'invalid';
+			$this->type = new Symbol('invalid');
 		}
 		$this->options = $options;
 		if (isset($options['message'])) {
 			$this->message = $options['message'];
 			unset($options['message']);
 		} else {
-			$this->message = $type;
+			$this->message = $this->type;
 		}
 	}
 
 	public function message()
 	{
-		// if (is_string($this->type)) {
-			// return $this->type;
-		// } else {
+		if (is_string($this->type)) {
+			return $this->type;
+		} else {
 			return $this->generate_message($this->default_options());
-		// }
+		}
 	}
 
 	public function to_s()
@@ -885,17 +886,17 @@ class Error
 
 	public function full_message()
 	{
-		// if ($this->attribute === 'base') {
-			// return $this->message;
-		// } else {
+		if ($this->attribute === 'base') {
+			return $this->message();
+		} else {
 			return $this->generate_full_message($this->default_options());
-		// }
+		}
 	}
 
 	public function value()
 	{
-		if (array_key_exists($attribute, $this->base)) {
-			return $this->base[$attribute];
+		if (array_key_exists($this->attribute, $this->base)) {
+			return $this->base[$this->attribute];
 		} else {
 			return null;
 		}
@@ -906,39 +907,47 @@ class Error
 		$class_name = classify(get_class($this->base));
 
 		$keys = array(
-			"models.$class_name.attributes.{$this->attribute}.{$this->message}",
-			"models.$class_name.{$this->message}",
-			"messages.{$this->message}");
+			new Symbol("models.$class_name.attributes.{$this->attribute}.{$this->message}"),
+			new Symbol("models.$class_name.{$this->message}"));
 
 		if (isset($options['default'])) {
 			$keys[] = $options['default'];
 		}
 
+		$keys[] = new Symbol("messages.{$this->message}");
+		if (is_string($this->message)) {
+			$keys[] = $this->message;
+		}
+
+		if ($this->type != $this->message) {
+			$keys[] = $this->type;
+		}
+
+		$key = array_shift($keys);
 		$options['default'] = $keys;
-		return I18n::translate(array_shift($keys), $options);
+		return I18n::translate($key, $options);
 	}
 
 	private function generate_full_message($options = array())
 	{
-		$class_name = classify(get_class($this->base));
-
 		// uses symbols, so I'm not sure
 		$keys = array(
-			"full_messages.{$this->message}",
-			"full_messages.format",
+			new Symbol("full_messages.{$this->message}"),
+			new Symbol("full_messages.format"),
 			"{{attribute}} {{message}}");
 
+		$key = array_shift($keys);
 		$options['default'] = $keys;
 		$options['message'] = $this->message;
-		return I18n::translate(array_shift($keys), $options);
+		return I18n::translate($key, $options);
 	}
 
 	private function default_options()
 	{
 		$options['scope'] = array('activerecord', 'errors');
-		$options['model'] = classify(get_class($this->base));
-		$options['attribute'] = Utils::human_attribute($this->attribute);
-		$options['value'] = null;
+		$options['model'] = $this->base->human_name();
+		$options['attribute'] = $this->base->human_attribute_name($this->attribute);
+		$options['value'] = $this->value();
 
 		$options = array_merge($options, $this->options);
 
@@ -976,11 +985,14 @@ class Errors
 			unset($options['default']);
 		}
 
-		if (is_a($message, 'Error')) {
+		$error = null;
+		if ($message instanceof Error) {
 			list($error, $message) = array($message, null);
 		}
 
-		$error = new Error($this->base, $attribute, $message, $options);
+		if ($error === null) {
+			$error = new Error($this->base, $attribute, $message, $options);
+		}
 
 		// if (!isset($this->errors[$attribute]))
 			// $this->errors[$attribute] = array($error);
@@ -995,7 +1007,7 @@ class Errors
 
 		foreach ($attributes as $attribute) {
 			if (empty($this->model->$attribute)) {
-				$this->add($attribute, 'empty', array('default' => $custom_message));
+				$this->add($attribute, new Symbol('empty'), array('default' => $custom_message));
 			}
 		}
 
@@ -1010,7 +1022,7 @@ class Errors
 
 		foreach ($attributes as $attribute) {
 			if (!$this->base->$attribute) {
-				$this->add($attribute, 'blank', array('default' => $custom_message));
+				$this->add($attribute, new Symbol('blank'), array('default' => $custom_message));
 			}
 		}
 
@@ -1025,7 +1037,6 @@ class Errors
 
 	public function on($attribute)
 	{
-
 		if (!array_key_exists($attribute, $this->errors))
 			return null;
 
@@ -1034,7 +1045,6 @@ class Errors
 		if (null === $errors) {
 			return null;
 		} else {
-			// print_r($errors);
 			foreach ($errors as &$error) {
 				$error = $error->to_s();
 			}
@@ -1075,16 +1085,11 @@ class Errors
 
 	public function full_messages($options = array())
 	{
-		// $full_messages = array();
-		//
+		$full_messages = array();
 		foreach ($this->errors as $errors)
 		{
 			foreach ($errors as $error)
 			{
-				// if (is_null($msg))
-				// 	continue;
-				//
-				// $full_messages[] = Utils::human_attribute($attribute) . ' ' . $msg;
 				$full_messages[] = $error->full_message();
 			}
 		}
