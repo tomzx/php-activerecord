@@ -938,7 +938,7 @@ class Error
 
 		$key = array_shift($keys);
 		$options['default'] = $keys;
-		$options['message'] = $this->message;
+		$options['message'] = $this->message();
 		return I18n::translate($key, $options);
 	}
 
