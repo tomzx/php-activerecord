@@ -20,3 +20,4 @@ en:
               custom: "is using a custom message."
     attributes:
       name: Name
+      special: Special

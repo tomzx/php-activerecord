@@ -73,14 +73,14 @@ class ValidationsTest extends DatabaseTest
 		BookValidations::create(array('name' => 'bob'));
 		$book = BookValidations::create(array('name' => 'bob'));
 
-		$this->assert_equals(array("Name must be unique"),$book->errors->full_messages());
+		$this->assert_equals(array("Name has already been taken"),$book->errors->full_messages());
 		$this->assert_equals(1,BookValidations::count(array('conditions' => "name='bob'")));
 	}
 
 	public function test_validates_uniqueness_of_excludes_self()
 	{
 		$book = BookValidations::first();
-		$this->assert_equals(true,$book->is_valid()); 
+		$this->assert_equals(true,$book->is_valid());
 	}
 
 	public function test_validates_uniqueness_of_with_multiple_fields()
@@ -97,7 +97,7 @@ class ValidationsTest extends DatabaseTest
 		$book1 = BookValidations::first();
 		$book2 = new BookValidations(array('name' => $book1->name, 'special' => $book1->special));
 		$this->assert_false($book2->is_valid());
-		$this->assert_equals(array('Name and special must be unique'),$book2->errors->full_messages());
+		$this->assert_equals(array('Name has already been taken', 'Special has already been taken'),$book2->errors->full_messages());
 	}
 };
 ?>
