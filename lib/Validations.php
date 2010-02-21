@@ -13,8 +13,6 @@ use ActiveRecord\Model;
 use IteratorAggregate;
 use ArrayIterator;
 use Closure;
-use I18n\I18n;
-use I18n\Symbol;
 
 
 /**
@@ -63,7 +61,7 @@ class Error
 		if ($type !== null) {
 			$this->type = $type;
 		} else {
-			$this->type = new Symbol('invalid');
+			$this->type = _s('invalid');
 		}
 		$this->options = $options;
 		if (isset($options['message'])) {
@@ -111,14 +109,15 @@ class Error
 		$class_name = classify(get_class($this->base));
 
 		$keys = array(
-			new Symbol("models.$class_name.attributes.{$this->attribute}.{$this->message}"),
-			new Symbol("models.$class_name.{$this->message}"));
+			_s("models.$class_name.attributes.{$this->attribute}.{$this->message}"),
+			_s("models.$class_name.{$this->message}")
+		);
 
 		if (isset($options['default'])) {
 			$keys[] = $options['default'];
 		}
 
-		$keys[] = new Symbol("messages.{$this->message}");
+		$keys[] = _s("messages.{$this->message}");
 		if (is_string($this->message)) {
 			$keys[] = $this->message;
 		}
@@ -129,22 +128,22 @@ class Error
 
 		$key = array_shift($keys);
 		$options['default'] = $keys;
-		return I18n::translate($key, $options);
+		return t($key, $options);
 	}
 
 	private function generate_full_message($options = array())
 	{
 		// uses symbols, so I'm not sure
 		$keys = array(
-			new Symbol("full_messages.{$this->message}"),
-			new Symbol("full_messages.format"),
+			_s("full_messages.{$this->message}"),
+			_s("full_messages.format"),
 			"{{attribute}} {{message}}");
 
 		$key = array_shift($keys);
 		$options['default'] = $keys;
 		// should be a call to $this->message and not $this->message(), but currently works
 		$options['message'] = $this->message();
-		return I18n::translate($key, $options);
+		return t($key, $options);
 	}
 
 	private function default_options()
@@ -205,7 +204,7 @@ class Errors
 
 		foreach ($attributes as $attribute) {
 			if (empty($this->model->$attribute)) {
-				$this->add($attribute, new Symbol('empty'), array('default' => $custom_message));
+				$this->add($attribute, _s('empty'), array('default' => $custom_message));
 			}
 		}
 	}
@@ -217,7 +216,7 @@ class Errors
 
 		foreach ($attributes as $attribute) {
 			if (!$this->base->$attribute) {
-				$this->add($attribute, new Symbol('blank'), array('default' => $custom_message));
+				$this->add($attribute, _s('blank'), array('default' => $custom_message));
 			}
 		}
 	}
@@ -532,7 +531,7 @@ class Validations
 				continue;
 
 			if (('inclusion' == $type && !in_array($var, $enum)) || ('exclusion' == $type && in_array($var, $enum)))
-				$this->record->add($attribute, new Symbol($type), array('default' => $options['message'], 'value' => $var));
+				$this->record->add($attribute, _s($type), array('default' => $options['message'], 'value' => $var));
 		}
 	}
 
@@ -590,14 +589,14 @@ class Validations
 				// 				else
 				// 					$message = Errors::$DEFAULT_ERROR_MESSAGES['not_a_number'];
 
-				$this->record->add($attribute, new Symbol('not_a_number'), array('default' => $options['message'], 'value' => $var));
+				$this->record->add($attribute, _s('not_a_number'), array('default' => $options['message'], 'value' => $var));
 				continue;
 			}
 			else
 			{
 				if (!is_numeric($var))
 				{
-					$this->record->add($attribute, new Symbol('not_a_number'), array('default' => $options['message'], 'value' => $var));
+					$this->record->add($attribute, _s('not_a_number'), array('default' => $options['message'], 'value' => $var));
 					continue;
 				}
 
@@ -623,19 +622,19 @@ class Validations
 					// $message = str_replace('%d', $option_value, $message);
 
 					if ('greater_than' == $option && !($var > $option_value))
-						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('greater_than_or_equal_to' == $option && !($var >= $option_value))
-						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('equal_to' == $option && !($var == $option_value))
-						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('less_than' == $option && !($var < $option_value))
-						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 
 					elseif ('less_than_or_equal_to' == $option && !($var <= $option_value))
-						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
 				else
 				{
@@ -645,7 +644,7 @@ class Validations
 					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
 
 					if (('odd' == $option && !( Utils::is_odd($var))) || ('even' == $option && (Utils::is_odd($var))))
-						$this->record->add($attribute, new Symbol($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
+						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
 			}
 		}
@@ -700,7 +699,7 @@ class Validations
 				continue;
 
 			if (!@preg_match($expression, $var))
-				$this->record->add($attribute, new Symbol('invalid'), array('default' => $options['message'], 'value' => $var));
+				$this->record->add($attribute, _s('invalid'), array('default' => $options['message'], 'value' => $var));
 		}
 	}
 
@@ -774,9 +773,9 @@ class Validations
 					throw new  ValidationsArgumentError("Range values cannot use signed integers.");
 
 				if (strlen($this->model->$attribute) < (int)$range[0])
-					$this->record->add($attribute, new Symbol('too_short'), array('default' => $custom_message, 'count' => $range[0]));
+					$this->record->add($attribute, _s('too_short'), array('default' => $custom_message, 'count' => $range[0]));
 				elseif (strlen($this->model->$attribute) > (int)$range[1])
-					$this->record->add($attribute, new Symbol('too_long'), array('default' => $custom_message, 'count' => $range[1]));
+					$this->record->add($attribute, _s('too_long'), array('default' => $custom_message, 'count' => $range[1]));
 			}
 
 			elseif ('is' == $range_option || 'minimum' == $range_option || 'maximum' == $range_option)
@@ -796,13 +795,13 @@ class Validations
 					$value = (int)$attr[$range_option];
 
 					if ('maximum' == $range_option && $len > $value)
-						$this->record->add($attribute, new Symbol('too_long'), array('default' => $custom_message, 'count' => $value));
+						$this->record->add($attribute, _s('too_long'), array('default' => $custom_message, 'count' => $value));
 
 					if ('minimum' == $range_option && $len < $value)
-						$this->record->add($attribute, new Symbol('too_short'), array('default' => $custom_message, 'count' => $value));
+						$this->record->add($attribute, _s('too_short'), array('default' => $custom_message, 'count' => $value));
 
 					if ('is' == $range_option && $len !== $value)
-						$this->record->add($attribute, new Symbol('wrong_length'), array('default' => $custom_message, 'count' => $value));
+						$this->record->add($attribute, _s('wrong_length'), array('default' => $custom_message, 'count' => $value));
 				}
 			}
 		}
@@ -867,7 +866,7 @@ class Validations
 			if ($this->model->exists(array('conditions' => $conditions))) {
 				$add_record = array_flatten(array($add_record));
 				foreach ($add_record as $record) {
-					$this->record->add($record, new Symbol('taken'), array('default' => $options['message'], 'value' => $record));
+					$this->record->add($record, _s('taken'), array('default' => $options['message'], 'value' => $record));
 				}
 			}
 		}

@@ -4,7 +4,6 @@
  */
 namespace ActiveRecord;
 use DateTime;
-use I18n\I18n;
 
 /**
  * The base class for your models.
@@ -1482,30 +1481,30 @@ class Model
 		//todo
 		// should loop here, but not currently
 		$class_name = classify(get_class($this));
-		$defaults = array("$class_name.$attribute_key_name");
+		$defaults = array(_s("$class_name.$attribute_key_name"));
 		if (isset($options['default'])) {
 			$defaults[] = $options['default'];
 		}
 		$defaults = array_flatten($defaults);
-		$defaults[] = Inflector::instance()->underscorify($attribute_key_name);
+		$defaults[] = classify($attribute_key_name);
 		if (!isset($options['count'])) {
 			$options['count'] = 1;
 		}
 		$key = array_shift($defaults);
 		$options['default'] = $defaults;
 		$options['scope'] = array('activerecord', 'attributes');
-		return I18n::translate($key, $options);
+		return t($key, $options);
 	}
 
 	public function human_name($options = array())
 	{
+		$defaults[] = _s(classify(get_class($this)));
 		$defaults[] = classify(get_class($this));
-
 		$key = array_shift($defaults);
 		$options['scope'] = array('activerecord', 'models');
 		$options['count'] = 1;
 		$options['default'] = $defaults;
-		return I18n::translate($key, $options);
+		return t($key, $options);
 	}
 };
 ?>
