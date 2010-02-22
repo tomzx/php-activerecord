@@ -21,10 +21,10 @@ class ValidationsTest extends DatabaseTest
 
 	public function test_is_valid_invokes_validations()
 	{
-		$book = new Book;
-		$this->assert_true(empty($book->errors));
+		$book = new BookValidations;
+		$this->assert_true($book->errors->is_empty());
 		$book->is_valid();
-		$this->assert_false(empty($book->errors));
+		$this->assert_false($book->errors->is_empty());
 	}
 
 	public function test_is_valid_returns_true_if_no_validations_exist()
