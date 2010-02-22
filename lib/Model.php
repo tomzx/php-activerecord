@@ -5,6 +5,8 @@
 namespace ActiveRecord;
 use DateTime;
 
+require_once('Validations.php');
+
 /**
  * The base class for your models.
  *
@@ -292,6 +294,7 @@ class Model
 	public function __construct(array $attributes=array(), $guard_attributes=true, $instantiating_via_find=false, $new_record=true)
 	{
 		$this->__new_record = $new_record;
+		$this->errors = new Errors($this);
 
 		// initialize attributes applying defaults
 		if (!$instantiating_via_find)
@@ -761,7 +764,8 @@ class Model
 				return false;
 		}
 
-		$this->errors = $validator->validate();
+		$this->errors->clear();
+		$validator->validate();
 
 		foreach (array('after_validation', "after_$validation_on") as $callback)
 			$this->invoke_callback($callback,false);

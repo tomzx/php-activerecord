@@ -386,7 +386,7 @@ class Validations
 	public function __construct(Model $model)
 	{
 		$this->model = $model;
-		$this->record = new Errors($this->model);
+		$this->record = $this->model->errors;
 		$this->validators = array_intersect(array_keys(Reflections::instance()->get(get_class($this->model))->getStaticProperties()), self::$VALIDATION_FUNCTIONS);
 	}
 
