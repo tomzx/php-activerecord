@@ -380,6 +380,21 @@ class ActiveRecordTest extends DatabaseTest
 		$this->assert_equals('BOB',$author->name);
 	}
 
+	public function test_getter()
+	{
+		$book = Book::first();
+		$this->assert_equals(strtoupper($book->name), $book->upper_name);
+	}
+
+	public function test_getter_with_same_name_as_an_attribute()
+	{
+		Book::$getters[] = 'name';
+		$book = new Book;
+		$book->name = 'bob';
+		$this->assert_equals('BOB', $book->name);
+		Book::$getters = array();
+	}
+
 	public function test_setting_invalid_date_should_set_date_to_null()
 	{
 		$author = new Author();
@@ -405,6 +420,17 @@ class ActiveRecordTest extends DatabaseTest
 		$validators = RmBldg::first()->get_validation_rules();
 		$this->assert_true(array_key_exists('space_out',$validators));
 		$this->assert_true(in_array(array('with' => '/\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\Z/i', 'validator' => 'validates_format_of'),$validators['space_out']));
+	}
+
+	public function test_clear_cache_for_specific_class()
+	{
+		$book_table1 = ActiveRecord\Table::load('Book');
+		$book_table2 = ActiveRecord\Table::load('Book');
+		ActiveRecord\Table::clear_cache('Book');
+		$book_table3 = ActiveRecord\Table::load('Book');
+
+		$this->assert_true($book_table1 === $book_table2);
+		$this->assert_true($book_table1 !== $book_table3);
 	}
 };
 ?>
