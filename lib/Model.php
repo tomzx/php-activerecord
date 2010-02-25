@@ -755,6 +755,7 @@ class Model
 	{
 		require_once 'Validations.php';
 
+		$this->errors->clear();
 		$validator = new Validations($this);
 		$validation_on = 'validation_on_' . ($this->is_new_record() ? 'create' : 'update');
 
@@ -764,16 +765,12 @@ class Model
 				return false;
 		}
 
-		$this->errors->clear();
 		$validator->validate();
 
 		foreach (array('after_validation', "after_$validation_on") as $callback)
 			$this->invoke_callback($callback,false);
 
-		if (!$this->errors->is_empty())
-			return false;
-
-		return true;
+		return $this->errors->is_empty();
 	}
 
 	/**
