@@ -58,25 +58,34 @@ class Error
 	{
 		$this->base = $base;
 		$this->attribute = $attribute;
-		if ($type !== null) {
+		if ($type !== null)
+		{
 			$this->type = $type;
-		} else {
+		}
+		else
+		{
 			$this->type = _s('invalid');
 		}
 		$this->options = $options;
-		if (isset($options['message'])) {
+		if (isset($options['message']))
+		{
 			$this->message = $options['message'];
 			unset($options['message']);
-		} else {
+		}
+		else
+		{
 			$this->message = $this->type;
 		}
 	}
 
 	public function message()
 	{
-		if (is_string($this->type)) {
+		if (is_string($this->type))
+		{
 			return $this->type;
-		} else {
+		}
+		else
+		{
 			return $this->generate_message($this->default_options());
 		}
 	}
@@ -88,18 +97,24 @@ class Error
 
 	public function full_message()
 	{
-		if ($this->attribute === 'base') {
+		if ($this->attribute === 'base')
+		{
 			return $this->message();
-		} else {
+		}
+		else
+		{
 			return $this->generate_full_message($this->default_options());
 		}
 	}
 
 	public function value()
 	{
-		if (array_key_exists($this->attribute, $this->base)) {
+		if (array_key_exists($this->attribute, $this->base))
+		{
 			return $this->base[$this->attribute];
-		} else {
+		}
+		else
+		{
 			return null;
 		}
 	}
@@ -113,16 +128,19 @@ class Error
 			_s("models.$class_name.{$this->message}")
 		);
 
-		if (isset($options['default'])) {
+		if (isset($options['default']))
+		{
 			$keys[] = $options['default'];
 		}
 
 		$keys[] = _s("messages.{$this->message}");
-		if (is_string($this->message)) {
+		if (is_string($this->message))
+		{
 			$keys[] = $this->message;
 		}
 
-		if ($this->type != $this->message) {
+		if ($this->type != $this->message)
+		{
 			$keys[] = $this->type;
 		}
 
@@ -172,22 +190,25 @@ class Errors
 
 	public function add_to_base($message)
 	{
-		$this->add($this->base, $message);
+		$this->add(classify($this->base), $message);
 	}
 
 	public function add($attribute, $message = null, $options = array())
 	{
-		if (isset($options['default'])) {
+		if (isset($options['default']))
+		{
 			$options['message'] = $options['default'];
 			unset($options['default']);
 		}
 
 		$error = null;
-		if ($message instanceof Error) {
+		if ($message instanceof Error)
+		{
 			list($error, $message) = array($message, null);
 		}
 
-		if ($error === null) {
+		if ($error === null)
+		{
 			$error = new Error($this->base, $attribute, $message, $options);
 		}
 
@@ -202,8 +223,10 @@ class Errors
 		$attributes = array($attributes);
 		$attributes = array_flatten($attributes);
 
-		foreach ($attributes as $attribute) {
-			if (empty($this->model->$attribute)) {
+		foreach ($attributes as $attribute)
+		{
+			if (empty($this->model->$attribute))
+			{
 				$this->add($attribute, _s('empty'), array('default' => $custom_message));
 			}
 		}
@@ -214,8 +237,10 @@ class Errors
 		$attributes = array($attributes);
 		$attributes = array_flatten($attributes);
 
-		foreach ($attributes as $attribute) {
-			if (!$this->base->$attribute) {
+		foreach ($attributes as $attribute)
+		{
+			if (!$this->base->$attribute)
+			{
 				$this->add($attribute, _s('blank'), array('default' => $custom_message));
 			}
 		}
@@ -233,10 +258,14 @@ class Errors
 
 		$errors = $this->errors[$attribute];
 
-		if (null === $errors) {
+		if (null === $errors)
+		{
 			return null;
-		} else {
-			foreach ($errors as &$error) {
+		}
+		else
+		{
+			foreach ($errors as &$error)
+			{
 				$error = $error->to_s();
 			}
 
@@ -251,8 +280,10 @@ class Errors
 
 	public function _each(Closure $closure)
 	{
-		foreach ($this->errors as $attribute => $errors) {
-			foreach ($errors as $error) {
+		foreach ($this->errors as $attribute => $errors)
+		{
+			foreach ($errors as $error)
+			{
 				$closure($attribute, $error->message());
 			}
 		}
@@ -260,8 +291,10 @@ class Errors
 
 	public function each_error(Closure $closure)
 	{
-		foreach ($this->errors as $attribute => $errors) {
-			foreach ($errors as $error) {
+		foreach ($this->errors as $attribute => $errors)
+		{
+			foreach ($errors as $error)
+			{
 				$closure($attribute, $error);
 			}
 		}
@@ -269,7 +302,8 @@ class Errors
 
 	public function each_full(Closure $closure)
 	{
-		foreach ($this->full_messages() as $message) {
+		foreach ($this->full_messages() as $message)
+		{
 			$closure($message);
 		}
 	}
@@ -300,7 +334,8 @@ class Errors
 	public function size()
 	{
 		$size = 0;
-		foreach ($this->errors as $error) {
+		foreach ($this->errors as $error)
+		{
 			$size += count($error);
 		}
 		return $size;
@@ -521,7 +556,7 @@ class Validations
 
 			if (isset($options['in']))
 				$enum = $options['in'];
-			elseif (isset($options['within']))
+			else if (isset($options['within']))
 				$enum = $options['within'];
 
 			if (!is_array($enum))
@@ -584,11 +619,6 @@ class Validations
 				if (preg_match('/\A[+-]?\d+\Z/', (string)($var)))
 					break;
 
-				// if (isset($options['message']))
-				// 					$message = $options['message'];
-				// 				else
-				// 					$message = Errors::$DEFAULT_ERROR_MESSAGES['not_a_number'];
-
 				$this->record->add($attribute, _s('not_a_number'), array('default' => $options['message'], 'value' => $var));
 				continue;
 			}
@@ -612,14 +642,7 @@ class Validations
 					$option_value = (float)$options[$option];
 
 					if (!is_numeric($option_value))
-						throw new  ValidationsArgumentError("$option must be a number");
-
-					// if (isset($options['message']))
-					// 	$message = $options['message'];
-					// else
-					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
-
-					// $message = str_replace('%d', $option_value, $message);
+						throw new ValidationsArgumentError("$option must be a number");
 
 					if ('greater_than' == $option && !($var > $option_value))
 						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
@@ -638,11 +661,6 @@ class Validations
 				}
 				else
 				{
-					// if (isset($options['message']))
-					// 	$message = $options['message'];
-					// else
-					// 	$message = Errors::$DEFAULT_ERROR_MESSAGES[$option];
-
 					if (('odd' == $option && !( Utils::is_odd($var))) || ('even' == $option && (Utils::is_odd($var))))
 						$this->record->add($attribute, _s($option), array('default' => $options['message'], 'value' => $var, 'count' => $option_value));
 				}
@@ -737,21 +755,24 @@ class Validations
 			switch (sizeof($range_options))
 			{
 				case 0:
-					throw new  ValidationsArgumentError('Range unspecified.  Specify the [within], [maximum], or [is] option.');
+					throw new ValidationsArgumentError('Range unspecified.  Specify the [within], [maximum], or [is] option.');
 
 				case 1:
 					break;
 
 				default:
-					throw new  ValidationsArgumentError('Too many range options specified.  Choose only one.');
+					throw new ValidationsArgumentError('Too many range options specified.  Choose only one.');
 			}
 
 			$attribute = $options[0];
 			$var = $this->model->$attribute;
 			$range_option = $range_options[0];
-			if (isset($options['message'])) {
+			if (isset($options['message']))
+			{
 				$custom_message = $options['message'];
-			} else {
+			}
+			else
+			{
 				// todo find correct custom message
 				$custom_message = null;
 			}
@@ -834,21 +855,20 @@ class Validations
 			$add_record = $options[0];
 			if (is_array($options[0]))
 			{
-				// $add_record = join("_and_", $options[0]);
-				// $add_record = $options[0];
 				$fields = $options[0];
 			}
 			else
 			{
-				// $add_record = $options[0];
 				$fields = array($options[0]);
 			}
 
-			$sql = "";
-			$conditions = array("");
+			$sql = '';
+			$conditions = array('');
 
 			if ($pk_value === null)
+			{
 				$sql = "{$pk[0]} is not null";
+			}
 			else
 			{
 				$sql = "{$pk[0]}!=?";
@@ -863,9 +883,11 @@ class Validations
 
 			$conditions[0] = $sql;
 
-			if ($this->model->exists(array('conditions' => $conditions))) {
+			if ($this->model->exists(array('conditions' => $conditions)))
+			{
 				$add_record = array_flatten(array($add_record));
-				foreach ($add_record as $record) {
+				foreach ($add_record as $record)
+				{
 					$this->record->add($record, _s('taken'), array('default' => $options['message'], 'value' => $record));
 				}
 			}

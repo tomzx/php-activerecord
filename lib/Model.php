@@ -364,7 +364,7 @@ class Model
 	 * @param string $name Name of an attribute
 	 * @return mixed The value of the attribute
 	 */
-	public function &__get($name)
+	public function __get($name)
 	{
 		// check for getter
 		if (in_array("get_$name",static::$getters))
@@ -398,9 +398,10 @@ class Model
 	public function __set($name, $value)
 	{
 		if (array_key_exists($name, static::$alias_attribute))
+		{
 			$name = static::$alias_attribute[$name];
-
-		elseif (in_array("set_$name",static::$setters))
+		}
+		else if (in_array("set_$name",static::$setters))
 		{
 			$name = "set_$name";
 			return $this->$name($value);
@@ -1075,12 +1076,12 @@ class Model
 
 			return $ret;
 		}
-		elseif (substr($method,0,11) === 'find_all_by')
+		else if (substr($method,0,11) === 'find_all_by')
 		{
 			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(substr($method,12),$args,static::$alias_attribute);
 			return static::find('all',$options);
 		}
-		elseif (substr($method,0,8) === 'count_by')
+		else if (substr($method,0,8) === 'count_by')
 		{
 			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(substr($method,9),$args,static::$alias_attribute);
 			return static::count($options);
@@ -1290,7 +1291,7 @@ class Model
 			$num_args--;
 		}
 		//find by pk
-		elseif (1 === count($args) && 1 == $num_args)
+		else if (1 === count($args) && 1 == $num_args)
 			$args = $args[0];
 
 		// anything left in $args is a find by pk
