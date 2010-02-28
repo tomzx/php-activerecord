@@ -443,7 +443,7 @@ class Validations
 			{
 				$field = $attr[0];
 
-				if (!is_array($data[$field]))
+				if (!isset($data[$field]) || !is_array($data[$field]))
 					$data[$field] = array();
 
 				$attr['validator'] = $validate;
