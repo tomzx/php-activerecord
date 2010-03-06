@@ -364,7 +364,7 @@ class Model
 	 * @param string $name Name of an attribute
 	 * @return mixed The value of the attribute
 	 */
-	public function __get($name)
+	public function &__get($name)
 	{
 		// check for getter
 		if (in_array("get_$name",static::$getters))

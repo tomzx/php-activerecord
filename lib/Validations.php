@@ -190,7 +190,7 @@ class Errors
 
 	public function add_to_base($message)
 	{
-		$this->add(classify($this->base), $message);
+		$this->add(classify(get_class($this->base)), $message);
 	}
 
 	public function add($attribute, $message = null, $options = array())
@@ -239,7 +239,7 @@ class Errors
 
 		foreach ($attributes as $attribute)
 		{
-			if (!$this->base->$attribute)
+			if (Utils::is_blank($this->base->$attribute))
 			{
 				$this->add($attribute, _s('blank'), array('default' => $custom_message));
 			}

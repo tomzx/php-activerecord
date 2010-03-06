@@ -6,6 +6,9 @@ class SqliteAdapterTest extends AdapterTest
 {
 	public function setUp($connection_name=null)
 	{
+		if (ActiveRecord\Config::instance()->get_connection('sqlite') === null)
+			$this->mark_test_skipped('SQLite connection not defined in config file.');
+
 		parent::setUp('sqlite');
 	}
 
