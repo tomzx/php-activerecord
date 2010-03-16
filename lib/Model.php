@@ -150,6 +150,13 @@ class Model
 	static $primary_key;
 
 	/**
+	 * Set this to explicitly specify the sequence name for the table.
+	 *
+	 * @var string
+	 */
+	static $sequence;
+
+	/**
 	 * Allows you to create aliases for attributes.
 	 *
 	 * <code>
@@ -724,18 +731,35 @@ class Model
 
 		$table = static::table();
 		$this->invoke_callback('before_create',false);
-		if (($dirty = $this->dirty_attributes()))
-			$table->insert($dirty);
-		else
-			$table->insert($this->attributes);
-		$this->invoke_callback('after_create',false);
+
+		if (!($attributes = $this->dirty_attributes()))
+			$attributes = $this->attributes;
 
 		$pk = $this->get_primary_key();
+		$use_sequence = false;
 
-		// if we've got an autoincrementing pk set it
-		if (count($pk) == 1 && $table->get_column_by_inflected_name($pk[0])->auto_increment)
-			$this->attributes[$pk[0]] = $table->conn->insert_id($table->sequence);
+		if ($table->sequence && !isset($attributes[$pk[0]]))
+		{
+			// unset pk that was set to null
+			if (array_key_exists($pk[0],$attributes))
+				unset($attributes[$pk[0]]);
 
+			$table->insert($attributes,$pk[0],$table->sequence);
+			$use_sequence = true;
+		}
+		else
+			$table->insert($attributes);
+
+		// if we've got an autoincrementing/sequenced pk set it
+		if (count($pk) == 1)
+		{
+			$column = $table->get_column_by_inflected_name($pk[0]);
+
+			if ($column->auto_increment || $use_sequence)
+				$this->attributes[$pk[0]] = $table->conn->insert_id($table->sequence);
+		}
+
+		$this->invoke_callback('after_create',false);
 		$this->__new_record = false;
 		return true;
 	}
@@ -1017,6 +1041,35 @@ class Model
 		$num_args = count($args);
 	}
 
+	/*
+	 * Add a model to the given named ($name) relationship.
+	 *
+	 * @internal This should <strong>only</strong> be used by eager load
+	 * @param Model $model
+	 * @param $name of relationship for this table
+	 * @return void
+	 */
+	public function set_relationship_from_eager_load(Model $model=null, $name)
+	{
+		$table = static::table();
+
+		if (($rel = $table->get_relationship($name)))
+		{
+			if ($rel->is_poly())
+			{
+				// if the related model is null and it is a poly then we should have an empty array
+				if (is_null($model))
+					return $this->__relationships[$name] = array();
+				else
+					return $this->__relationships[$name][] = $model;
+			}
+			else
+				return $this->__relationships[$name] = $model;
+		}
+
+		throw new RelationshipException("Relationship named $name has not been declared for class: {$table->class->getName()}");
+	}
+
 	/**
 	 * Reloads the attributes and relationships of this object from the database.
 	 *
@@ -1030,6 +1083,13 @@ class Model
 		$this->set_attributes($this->find($pk)->attributes);
 		$this->reset_dirty();
 
+		return $this;
+	}
+
+	public function __clone()
+	{
+		$this->__relationships = array();
+		$this->reset_dirty();
 		return $this;
 	}
 
@@ -1109,7 +1169,7 @@ class Model
 		if (substr($method,0,7) === 'find_by')
 		{
 			$attributes = substr($method,8);
-			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string($attributes,$args,static::$alias_attribute);
+			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(static::table()->conn,$attributes,$args,static::$alias_attribute);
 
 			if (!($ret = static::find('first',$options)) && $create)
 				return static::create(SQLBuilder::create_hash_from_underscored_string($attributes,$args,static::$alias_attribute));
@@ -1118,12 +1178,12 @@ class Model
 		}
 		else if (substr($method,0,11) === 'find_all_by')
 		{
-			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(substr($method,12),$args,static::$alias_attribute);
+			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(static::table()->conn,substr($method,12),$args,static::$alias_attribute);
 			return static::find('all',$options);
 		}
 		else if (substr($method,0,8) === 'count_by')
 		{
-			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(substr($method,9),$args,static::$alias_attribute);
+			$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string(static::table()->conn,substr($method,9),$args,static::$alias_attribute);
 			return static::count($options);
 		}
 

@@ -225,7 +225,7 @@ class Errors
 
 		foreach ($attributes as $attribute)
 		{
-			if (empty($this->model->$attribute))
+			if (empty($this->base->$attribute))
 			{
 				$this->add($attribute, _s('empty'), array('default' => $custom_message));
 			}
@@ -239,7 +239,7 @@ class Errors
 
 		foreach ($attributes as $attribute)
 		{
-			if (Utils::is_blank($this->base->$attribute))
+			if (!$this->base->$attribute)
 			{
 				$this->add($attribute, _s('blank'), array('default' => $custom_message));
 			}

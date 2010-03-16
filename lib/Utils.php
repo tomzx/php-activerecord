@@ -65,6 +65,7 @@ function array_flatten(array $array)
 			array_splice($array,$i,1,$array[$i]);
         else
 			++$i;
+
 		$n = count($array);
     }
     return $array;

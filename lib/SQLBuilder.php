@@ -28,6 +28,7 @@ class SQLBuilder
 
 	// for insert/update
 	private $data;
+	private $sequence;
 
 	/**
 	 * Constructor.
@@ -140,13 +141,17 @@ class SQLBuilder
 		return $this;
 	}
 
-	public function insert($hash)
+	public function insert($hash, $pk=null, $sequence_name=null)
 	{
 		if (!is_hash($hash))
 			throw new ActiveRecordException('Inserting requires a hash.');
 
 		$this->operation = 'INSERT';
 		$this->data = $hash;
+
+		if ($pk && $sequence_name)
+			$this->sequence = array($pk,$sequence_name);
+
 		return $this;
 	}
 
@@ -194,13 +199,14 @@ class SQLBuilder
 	/**
 	 * Converts a string like "id_and_name_or_z" into a conditions value like array("id=? AND name=? OR z=?", values, ...).
 	 *
+	 * @param Connection $connection
 	 * @param $name Underscored string
 	 * @param $values Array of values for the field names. This is used
 	 *   to determine what kind of bind marker to use: =?, IN(?), IS NULL
 	 * @param $map A hash of "mapped_column_name" => "real_column_name"
 	 * @return A conditions array in the form array(sql_string, value1, value2,...)
 	 */
-	public static function create_conditions_from_underscored_string($name, &$values=array(), &$map=null)
+	public static function create_conditions_from_underscored_string(Connection $connection, $name, &$values=array(), &$map=null)
 	{
 		if (!$name)
 			return null;
@@ -230,7 +236,7 @@ class SQLBuilder
 			// map to correct name if $map was supplied
 			$name = $map && isset($map[$parts[$i]]) ? $map[$parts[$i]] : $parts[$i];
 
-			$conditions[0] .= $name . $bind;
+			$conditions[0] .= $connection->quote_name($name) . $bind;
 		}
 		return $conditions;
 	}
@@ -306,7 +312,16 @@ class SQLBuilder
 		require_once 'Expressions.php';
 		$keys = join(',',$this->quoted_key_names());
 
-		$e = new Expressions($this->connection,"INSERT INTO $this->table($keys) VALUES(?)",array_values($this->data));
+		if ($this->sequence)
+		{
+			$sql =
+				"INSERT INTO $this->table($keys," . $this->connection->quote_name($this->sequence[0]) . 
+				") VALUES(?," . $this->connection->next_sequence_value($this->sequence[1]) . ")";
+		}
+		else
+			$sql = "INSERT INTO $this->table($keys) VALUES(?)";
+
+		$e = new Expressions($this->connection,$sql,array_values($this->data));
 		return $e->to_s();
 	}
 

@@ -83,9 +83,9 @@ class Table
 
 		$this->conn = ConnectionManager::get_connection($connection);
 		$this->set_table_name();
-		$this->set_sequence_name();
 		$this->get_meta_data();
 		$this->set_primary_key();
+		$this->set_sequence_name();
 		$this->set_delegates();
 		$this->set_setters_and_getters();
 
@@ -178,14 +178,18 @@ class Table
 	{
 		$sql = $this->options_to_sql($options);
 		$readonly = (array_key_exists('readonly',$options) && $options['readonly']) ? true : false;
-		return $this->find_by_sql($sql->to_s(),$sql->get_where_values(), $readonly);
+		$eager_load = array_key_exists('include',$options) ? $options['include'] : null;
+
+		return $this->find_by_sql($sql->to_s(),$sql->get_where_values(), $readonly, $eager_load);
 	}
 
-	public function find_by_sql($sql, $values=null, $readonly=false)
+	public function find_by_sql($sql, $values=null, $readonly=false, $includes=null)
 	{
 		$this->last_sql = $sql;
 
-		$list = array();
+		$collect_attrs_for_includes = is_null($includes) ? false : true;
+		$list = $attrs = array();
+
 		$sth = $this->conn->query($sql,$values);
 
 		while (($row = $sth->fetch()))
@@ -195,9 +199,45 @@ class Table
 			if ($readonly)
 				$model->readonly();
 
+			if ($collect_attrs_for_includes)
+				$attrs[] = $model->attributes();
+
 			$list[] = $model;
 		}
+
+		if ($collect_attrs_for_includes)
+			$this->execute_eager_load($list, $attrs, $includes);
+
 		return $list;
+	}
+
+	/**
+	 * Executes an eager load of a given named relationship for this table.
+	 *
+	 * @param $models array found modesl for this table
+	 * @param $attrs array of attrs from $models
+	 * @param $includes array eager load directives
+	 * @return void
+	 */
+	private function execute_eager_load($models=array(), $attrs=array(), $includes=array())
+	{
+		if (!is_array($includes))
+			$includes = array($includes);
+
+		foreach ($includes as $index => $name)
+		{
+			// nested include
+			if (is_array($name))
+			{
+				$nested_includes = count($name) > 1 ? $name : $name[0];
+				$name = $index;
+			}
+			else
+				$nested_includes = array();
+
+			$rel = $this->get_relationship($name, true);
+			$rel->load_eagerly($models, $attrs, $nested_includes, $this);
+		}
 	}
 
 	public function get_column_by_inflected_name($inflected_name)
@@ -210,9 +250,9 @@ class Table
 		return null;
 	}
 
-	public function get_fully_qualified_table_name()
+	public function get_fully_qualified_table_name($quote_name=true)
 	{
-		$table = $this->conn->quote_name($this->table);
+		$table = $quote_name ? $this->conn->quote_name($this->table) : $this->table;
 
 		if ($this->db_name)
 			$table = $this->conn->quote_name($this->db_name) . ".$table";
@@ -220,18 +260,43 @@ class Table
 		return $table;
 	}
 
-	public function get_relationship($name)
+	/**
+	 * Retrieve a relationship object for this table. Strict as true will throw an error
+	 * if the relationship name does not exist.
+	 *
+	 * @param $name string name of Relationship
+	 * @param $strict bool
+	 * @throws RelationshipException
+	 * @return Relationship or null
+	 */
+	public function get_relationship($name, $strict=false)
 	{
-		if (isset($this->relationships[$name]))
+		if ($this->has_relationship($name))
 			return $this->relationships[$name];
+
+		if ($strict)
+			throw new RelationshipException("Relationship named $name has not been declared for class: {$this->class->getName()}");
+
+		return null;
 	}
 
-	public function insert(&$data)
+	/**
+	 * Does a given relationship exist?
+	 *
+	 * @param $name string name of Relationship
+	 * @return bool
+	 */
+	public function has_relationship($name)
+	{
+		return array_key_exists($name, $this->relationships);
+	}
+
+	public function insert(&$data, $pk=null, $sequence_name=null)
 	{
 		$data = $this->process_data($data);
 
 		$sql = new SQLBuilder($this->conn,$this->get_fully_qualified_table_name());
-		$sql->insert($data,$this->pk[0],$this->sequence);
+		$sql->insert($data,$pk,$sequence_name);
 
 		$values = array_values($data);
 		return $this->conn->query(($this->last_sql = $sql->to_s()),$values);
@@ -271,7 +336,11 @@ class Table
 
 	private function get_meta_data()
 	{
-		$this->columns = $this->conn->columns($this->get_fully_qualified_table_name());
+		// as more adapters are added probably want to do this a better way
+		// than using instanceof but gud enuff for now
+		$quote_name = !($this->conn instanceof PgsqlAdapter);
+
+		$this->columns = $this->conn->columns($this->get_fully_qualified_table_name($quote_name));
 	}
 
 	/**
@@ -344,7 +413,11 @@ class Table
 
 	private function set_sequence_name()
 	{
-		$this->sequence = $this->class->getStaticPropertyValue('sequence',$this->conn->get_sequence_name($this->table));
+		if (!$this->conn->supports_sequences())
+			return;
+
+		if (!($this->sequence = $this->class->getStaticPropertyValue('sequence')))
+			$this->sequence = $this->conn->get_sequence_name($this->table,$this->pk[0]);
 	}
 
 	private function set_associations()
