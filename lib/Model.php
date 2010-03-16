@@ -792,6 +792,29 @@ class Model
 	}
 
 	/**
+	 * Delete all entries that correspond to specific conditions.
+	 *
+	 * @return boolean
+	 */
+	public static function delete_all(/* $conditions = null */)
+	{
+		$args = func_get_args();
+		$num_args = count($args);
+
+		if ($num_args === 0) {
+			$data = array();
+		} else {
+			$options = array();
+			$options['conditions'] = array_shift($args);
+			while (count($args) > 0) {
+				$options[] = array_shift($args);
+			}
+			$data = static::table()->options_to_sql($options)->get_where_values();
+		}
+		static::table()->delete($data);
+	}
+
+	/**
 	 * Helper that creates an array of values for the primary key(s).
 	 *
 	 * @return array An array in the form array(key_name => value, ...)
@@ -977,6 +1000,21 @@ class Model
 
 		if (!empty($exceptions))
 			throw new UndefinedPropertyException(get_called_class(),$exceptions);
+	}
+
+	/**
+	 * Update all entries for the model. In order to update specific entries, conditions must be defined.
+	 *
+	 * @param array $updates Hash containing key => newValue
+	 * @param string $conditions Conditions to limit the entries on which the update will apply
+	 * @param string $options Additionnal options
+	 * @return boolean
+	 */
+	public function update_all(/* $updates, $conditions = null, $options = array() */)
+	{
+		$args = func_get_args();
+		$options = static::extract_and_validate_options($args);
+		$num_args = count($args);
 	}
 
 	/**

@@ -60,6 +60,22 @@ class ActiveRecordWriteTest extends DatabaseTest
 		$this->assert_equals(0,count($res));
 	}
 
+	public function test_delete_all()
+	{
+		Venue::delete_all();
+
+		$res = Venue::all();
+		$this->assert_equals(0,count($res));
+	}
+
+	public function test_delete_all_with_condition()
+	{
+		Venue::delete_all('state = ?', 'VA');
+
+		$res = Venue::all();
+		$this->assert_equals(4,count($res));
+	}
+
 	public function test_update()
 	{
 		$book = Book::find(1);
@@ -276,7 +292,7 @@ class ActiveRecordWriteTest extends DatabaseTest
 		$author->name = 'coco';
 		$this->assert_equals(true,$author->is_dirty());
 	}
-	
+
 	private function make_new_book_and($save=true)
 	{
 		$book = new Book();
