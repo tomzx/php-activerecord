@@ -14,6 +14,7 @@ require 'lib/Reflections.php';
 require 'lib/Inflector.php';
 require 'lib/CallBack.php';
 require 'lib/Exceptions.php';
+require 'lib/Expressions.php';
 require '../../php-i18n/I18n.php';
 
 use I18n\I18n;
