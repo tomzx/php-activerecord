@@ -1,6 +1,6 @@
 # PHP ActiveRecord #
 
-Version 0.9 beta
+Version 1.0 RC1
 
 by Kien La and Jacques Fuentes
 
@@ -31,7 +31,7 @@ Of course, there are some differences which will be obvious to the user if they 
 - MySQL
 - SQLite
 - PostgreSQL
-- (oracle soon)
+- Oracle
 
 ## Installation ##
 

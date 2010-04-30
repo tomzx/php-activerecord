@@ -59,6 +59,27 @@ class Config extends Singleton
 	private $model_directory;
 
 	/**
+	 * Switch for logging.
+	 *
+	 * @var bool
+	 */
+	private $logging = false;
+
+	/**
+	 * Contains a Logger object that must impelement a log() method.
+	 *
+	 * @var object
+	 */
+	private $logger;
+
+	/**
+	 * The format to serialize DateTime values into.
+	 *
+	 * @var string
+	 */
+	private $date_format = \DateTime::ISO8601;
+
+	/**
 	 * Allows config initialization using a closure.
 	 *
 	 * This method is just syntatic sugar.
@@ -72,7 +93,7 @@ class Config extends Singleton
 	 * </code>
 	 *
 	 * You can also initialize by grabbing the singleton object:
-	 * 
+	 *
 	 * <code>
 	 * $cfg = ActiveRecord\Config::instance();
 	 * $cfg->set_model_directory('/path/to/your/model_directory');
@@ -191,6 +212,77 @@ class Config extends Singleton
 	public function get_model_directory()
 	{
 		return $this->model_directory;
+	}
+
+	/**
+	 * Turn on/off logging
+	 *
+	 * @param boolean $bool
+	 * @return void
+	 */
+	public function set_logging($bool)
+	{
+		$this->logging = (bool)$bool;
+	}
+
+	/**
+	 * Sets the logger object for future SQL logging
+	 *
+	 * @param object $logger
+	 * @return void
+	 * @throws ConfigException if Logger objecct does not implement public log()
+	 */
+	public function set_logger($logger)
+	{
+		$klass = Reflections::instance()->add($logger)->get($logger);
+
+		if (!$klass->getMethod('log') || !$klass->getMethod('log')->isPublic())
+			throw new ConfigException("Logger object must implement a public log method");
+
+		$this->logger = $logger;
+	}
+
+	/**
+	 * Return whether or not logging is on
+	 *
+	 * @return boolean
+	 */
+	public function get_logging()
+	{
+		return $this->logging;
+	}
+
+	/**
+	 * Returns the logger
+	 *
+	 * @return object
+	 */
+	public function get_logger()
+	{
+		return $this->logger;
+	}
+
+	/**
+	 * Returns the date format.
+	 *
+	 * @return string
+	 */
+	public function get_date_format()
+	{
+		return $this->date_format;
+	}
+
+	/**
+	 * Sets the date format.
+	 *
+	 * Accepts date formats accepted by PHP's date() function.
+	 *
+	 * @link http://us.php.net/manual/en/function.date.php
+	 * @param string $format
+	 */
+	public function set_date_format($format)
+	{
+		$this->date_format = $format;
 	}
 };
 ?>

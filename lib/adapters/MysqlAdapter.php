@@ -11,10 +11,7 @@ namespace ActiveRecord;
  */
 class MysqlAdapter extends Connection
 {
-	public function default_port()
-	{
-		return 3306;
-	}
+	static $DEFAULT_PORT = 3306;
 
 	public function limit($sql, $offset, $limit)
 	{
@@ -31,11 +28,6 @@ class MysqlAdapter extends Connection
 	public function query_for_tables()
 	{
 		return $this->query('SHOW TABLES');
-	}
-
-	public function quote_name($string)
-	{
-		return $string{0} === '`' || $string{strlen($string)-1} === '`' ? $string : "`$string`";
 	}
 
 	public function create_column(&$column)
@@ -73,7 +65,7 @@ class MysqlAdapter extends Connection
 		}
 
 		$c->map_raw_type();
-		$c->default = $c->cast($column['default']);
+		$c->default = $c->cast($column['default'],$this);
 
 		return $c;
 	}

@@ -12,10 +12,11 @@ use XmlWriter;
  *
  * <ul>
  * <li><b>only:</b> a string or array of attributes to be included.</li>
- * <li><b>excluded:</b> a string or array of attributes to be excluded.</li>
+ * <li><b>exclude:</b> a string or array of attributes to be excluded.</li>
  * <li><b>methods:</b> a string or array of methods to invoke. The method's name will be used as a key for the final attributes array
  * along with the method's returned value</li>
  * <li><b>include:</b> a string or array of associated models to include in the final serialized product.</li>
+ * <li><b>skip_instruct:</b> set to true to skip the <?xml ...?> declaration.</li>
  * </ul>
  *
  * Example usage:
@@ -45,6 +46,39 @@ abstract class Serialization
 	protected $attributes;
 
 	/**
+	 * Set this to true if the serializer needs to create a nested array keyed
+	 * on the name of the included classes such as for xml serialization.
+	 *
+	 * Setting this to true will produce the following attributes array when
+	 * the include option was used:
+	 *
+	 * <code>
+	 * $user = array('id' => 1, 'name' => 'Tito',
+	 *   'permissions' => array(
+	 *     'permission' => array(
+	 *       array('id' => 100, 'name' => 'admin'),
+	 *       array('id' => 101, 'name' => 'normal')
+	 *     )
+	 *   )
+	 * );
+	 * </code>
+	 *
+	 * Setting to false will produce this:
+	 *
+	 * <code>
+	 * $user = array('id' => 1, 'name' => 'Tito',
+	 *   'permissions' => array(
+	 *     array('id' => 100, 'name' => 'admin'),
+	 *     array('id' => 101, 'name' => 'normal')
+	 *   )
+	 * );
+	 * </code>
+	 *
+	 * @var boolean
+	 */
+	protected $includes_with_class_name_element = false;
+
+	/**
 	 * Constructs a {@link Serialization} object.
 	 *
 	 * @param Model $model The model to serialize
@@ -61,10 +95,10 @@ abstract class Serialization
 
 	private function parse_options()
 	{
+		$this->check_only();
 		$this->check_except();
 		$this->check_methods();
 		$this->check_include();
-		$this->check_only();
 	}
 
 	private function check_only()
@@ -72,6 +106,7 @@ abstract class Serialization
 		if (isset($this->options['only']))
 		{
 			$this->options_to_a('only');
+
 			$exclude = array_diff(array_keys($this->attributes),$this->options['only']);
 			$this->attributes = array_diff_key($this->attributes,array_flip($exclude));
 		}
@@ -79,7 +114,7 @@ abstract class Serialization
 
 	private function check_except()
 	{
-		if (isset($this->options['except']))
+		if (isset($this->options['except']) && !isset($this->options['only']))
 		{
 			$this->options_to_a('except');
 			$this->attributes = array_diff_key($this->attributes,array_flip($this->options['except']));
@@ -131,7 +166,11 @@ abstract class Serialization
 						foreach ($assoc as $a)
 						{
 							$serialized = new $serializer_class($a, $options);
-							$includes[] = $serialized->to_a();
+
+							if ($this->includes_with_class_name_element)
+								$includes[strtolower(get_class($a))][] = $serialized->to_a();
+							else
+								$includes[] = $serialized->to_a();
 						}
 
 						$this->attributes[$association] = $includes;
@@ -156,6 +195,13 @@ abstract class Serialization
 	 */
 	final public function to_a()
 	{
+		$date_format = Config::instance()->get_date_format();
+
+		foreach ($this->attributes as &$value)
+		{
+			if ($value instanceof \DateTime)
+				$value = $value->format($date_format);
+		}
 		return $this->attributes;
 	}
 
@@ -183,9 +229,11 @@ abstract class Serialization
  */
 class JsonSerializer extends Serialization
 {
+	public static $include_root = false;
+
 	public function to_s()
 	{
-		return json_encode($this->attributes);
+		return json_encode(self::$include_root ? array(strtolower(get_class($this->model)) => $this->attributes) : $this->attributes);
 	}
 }
 
@@ -197,6 +245,12 @@ class JsonSerializer extends Serialization
 class XmlSerializer extends Serialization
 {
 	private $writer;
+
+	public function __construct(Model $model, &$options)
+	{
+		$this->includes_with_class_name_element = true;
+		parent::__construct($model,$options);
+	}
 
 	public function to_s()
 	{
@@ -212,18 +266,32 @@ class XmlSerializer extends Serialization
 		$this->write($this->attributes);
 		$this->writer->endElement();
 		$this->writer->endDocument();
-		return $this->writer->outputMemory(true);
+		$xml = $this->writer->outputMemory(true);
+
+		if (@$this->options['skip_instruct'] == true)
+			$xml = preg_replace('/<\?xml version.*?\?>/','',$xml);
+
+		return $xml;
 	}
 
-	private function write($data)
+	private function write($data, $tag=null)
 	{
 		foreach ($data as $attr => $value)
 		{
+			if ($tag != null)
+				$attr = $tag;
+
 			if (is_array($value))
 			{
-				$this->writer->startElement($attr);
-				$this->write($value);
-				$this->writer->endElement();
+				if (!is_int(key($value)))
+				{
+					$this->writer->startElement($attr);
+					$this->write($value);
+					$this->writer->endElement();
+				}
+				else
+					$this->write($value, $attr);
+
 				continue;
 			}
 

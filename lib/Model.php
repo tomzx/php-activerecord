@@ -442,7 +442,7 @@ class Model
 			$this->__dirty = array();
 
 		if (array_key_exists($name,$table->columns) && !is_object($value))
-			$value = $table->columns[$name]->cast($value);
+			$value = $table->columns[$name]->cast($value,static::connection());
 
 		$this->attributes[$name] = $value;
 		$this->__dirty[$name] = true;
@@ -740,12 +740,22 @@ class Model
 
 		if ($table->sequence && !isset($attributes[$pk[0]]))
 		{
-			// unset pk that was set to null
-			if (array_key_exists($pk[0],$attributes))
-				unset($attributes[$pk[0]]);
+			if (($conn = static::connection()) instanceof OciAdapter)
+			{
+				// terrible oracle makes us select the nextval first
+				$attributes[$pk[0]] = $conn->get_next_sequence_value($table->sequence);
+				$table->insert($attributes);
+				$this->attributes[$pk[0]] = $attributes[$pk[0]];
+			}
+			else
+			{
+				// unset pk that was set to null
+				if (array_key_exists($pk[0],$attributes))
+					unset($attributes[$pk[0]]);
 
-			$table->insert($attributes,$pk[0],$table->sequence);
-			$use_sequence = true;
+				$table->insert($attributes,$pk[0],$table->sequence);
+				$use_sequence = true;
+			}
 		}
 		else
 			$table->insert($attributes);
@@ -990,13 +1000,14 @@ class Model
 		$exceptions = array();
 		$use_attr_accessible = !empty(static::$attr_accessible);
 		$use_attr_protected = !empty(static::$attr_protected);
+		$connection = static::connection();
 
 		foreach ($attributes as $name => $value)
 		{
 			// is a normal field on the table
 			if (array_key_exists($name,$table->columns))
 			{
-				$value = $table->columns[$name]->cast($value);
+				$value = $table->columns[$name]->cast($value,$connection);
 				$name = $table->columns[$name]->inflected_name;
 			}
 
@@ -1017,6 +1028,10 @@ class Model
 			}
 			else
 			{
+				// ignore OciAdapter's limit() stuff
+				if ($name == 'ar_rnum__')
+					continue;
+
 				// set arbitrary data
 				$this->attributes[$name] = $value;
 			}
@@ -1416,18 +1431,11 @@ class Model
 	 */
 	public static function find_by_pk($values, $options)
 	{
-		if (($expected = count($values)) <= 1)
-		{
-			$options['limit'] = 1;
-			$options['offset'] = 0;
-		}
-
 		$options['conditions'] = static::pk_conditions($values);
-
 		$list = static::table()->find($options);
 		$results = count($list);
 
-		if ($results != $expected)
+		if ($results != ($expected = count($values)))
 		{
 			$class = get_called_class();
 

@@ -11,9 +11,10 @@ namespace ActiveRecord;
  */
 class PgsqlAdapter extends Connection
 {
-	public function supports_sequences() { return true; }
+	static $QUOTE_CHARACTER	= '"';
+	static $DEFAULT_PORT	= 5432;
 
-	public function default_port() { return 5432; }
+	public function supports_sequences() { return true; }
 
 	public function get_sequence_name($table, $column_name)
 	{
@@ -56,11 +57,6 @@ SQL;
 		return $this->query("SELECT tablename FROM pg_tables WHERE schemaname NOT IN('information_schema','pg_catalog')");
 	}
 
-	public function quote_name($string)
-	{
-		return $string[0] === '"' || $string[strlen($string)-1] === '"' ? $string : "\"$string\"";
-	}
-
 	public function create_column(&$column)
 	{
 		$c = new Column();
@@ -100,7 +96,7 @@ SQL;
 			if (count($matches) == 2)
 				$c->sequence = $matches[1];
 			else
-				$c->default = $c->cast($column['default']);
+				$c->default = $c->cast($column['default'],$this);
 		}
 		return $c;
 	}

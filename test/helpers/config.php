@@ -10,6 +10,10 @@ require_once dirname(__FILE__) . '/../../ActiveRecord.php';
 
 $GLOBALS['ACTIVERECORD_LOGGER'] = Log::singleton('file', dirname(__FILE__) . '/../log/query.log','ident',array('mode' => 0664, 'timeFormat' =>  '%Y-%m-%d %H:%M:%S'));
 
+// whether or not to run the slow non-crucial tests
+$GLOBALS['slow_tests'] = false;
+
+
 if (getenv('LOG') !== 'false')
 	DatabaseTest::$log = true;
 
@@ -28,7 +32,14 @@ ActiveRecord\Config::initialize(function($cfg)
 	{
 		if ($GLOBALS['argv'][$i] == '--adapter')
 			$cfg->set_default_connection($GLOBALS['argv'][$i+1]);
+		elseif ($GLOBALS['argv'][$i] == '--slow-tests')
+			$GLOBALS['slow_tests'] = true;
 	}
+
+	$logger = Log::singleton('file', dirname(__FILE__) . '/../log/query.log','ident',array('mode' => 0664, 'timeFormat' =>  '%Y-%m-%d %H:%M:%S'));
+
+	$cfg->set_logging(true);
+	$cfg->set_logger($logger);
 });
 
 error_reporting(E_ALL | E_STRICT);

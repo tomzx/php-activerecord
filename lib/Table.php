@@ -102,6 +102,7 @@ class Table
 		$self = $this->table;
 		$ret = $space = '';
 
+		$existing_tables = array();
 		foreach ($joins as $value)
 		{
 			$ret .= $space;
@@ -109,7 +110,23 @@ class Table
 			if (stripos($value,'JOIN ') === false)
 			{
 				if (array_key_exists($value, $this->relationships))
-					$ret .= $this->get_relationship($value)->construct_inner_join_sql($this);
+				{
+					$rel = $this->get_relationship($value);
+
+					// if there is more than 1 join for a given table we need to alias the table names
+					if (array_key_exists($rel->class_name, $existing_tables))
+					{
+						$alias = $value;
+						$existing_tables[$rel->class_name]++;
+					}
+					else
+					{
+						$existing_tables[$rel->class_name] = true;
+						$alias = null;
+					}
+
+					$ret .= $rel->construct_inner_join_sql($this, false, $alias);
+				}
 				else
 					throw new RelationshipException("Relationship named $value has not been declared for class: {$this->class->getName()}");
 			}
@@ -189,7 +206,6 @@ class Table
 
 		$collect_attrs_for_includes = is_null($includes) ? false : true;
 		$list = $attrs = array();
-
 		$sth = $this->conn->query($sql,$values);
 
 		while (($row = $sth->fetch()))
@@ -368,9 +384,8 @@ class Table
 	{
 		foreach ($hash as $name => &$value)
 		{
-			// TODO this will probably need to be changed for oracle
 			if ($value instanceof DateTime)
-				$hash[$name] = $value->format('Y-m-d H:i:s T');
+				$hash[$name] = $this->conn->datetime_to_string($value);
 			else
 				$hash[$name] = $value;
 		}

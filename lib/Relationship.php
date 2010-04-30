@@ -96,6 +96,11 @@ abstract class AbstractRelationship implements InterfaceRelationship
 			$this->foreign_key = is_array($this->options['foreign_key']) ? $this->options['foreign_key'] : array($this->options['foreign_key']);
 	}
 
+	protected function get_table()
+	{
+		return Table::load($this->class_name);
+	}
+
 	/**
 	 * What is this relationship's cardinality?
 	 *
@@ -125,11 +130,12 @@ abstract class AbstractRelationship implements InterfaceRelationship
 	{
 		$values = array();
 		$options = array();
+		$inflector = Inflector::instance();
 		$query_key = $query_keys[0];
 		$model_values_key = $model_values_keys[0];
 
 		foreach ($attributes as $column => $value)
-			$values[] = $value[$model_values_key];
+			$values[] = $value[$inflector->variablize($model_values_key)];
 
 		$values = array($values);
 		$options['conditions'] = SQLBuilder::create_conditions_from_underscored_string($table->conn,$query_key,$values);
@@ -141,6 +147,8 @@ abstract class AbstractRelationship implements InterfaceRelationship
 
 		$related_models = $class::find('all', $options);
 		$used_models = array();
+		$model_values_key = $inflector->variablize($model_values_key);
+		$query_key = $inflector->variablize($query_key);
 
 		foreach ($models as $model)
 		{
@@ -280,17 +288,18 @@ abstract class AbstractRelationship implements InterfaceRelationship
 	 * Creates INNER JOIN SQL for associations.
 	 *
 	 * @param Table $from_table the table used for the FROM SQL statement
+	 * @param bool $using_through is this a THROUGH relationship?
+	 * @param string $alias a table alias for when a table is being joined twice
 	 * @return string SQL INNER JOIN fragment
 	 */
-	public function construct_inner_join_sql(Table $from_table, $using_through=false)
+	public function construct_inner_join_sql(Table $from_table, $using_through=false, $alias=null)
 	{
 		if ($using_through)
 		{
 			$join_table = $from_table;
 			$join_table_name = $from_table->get_fully_qualified_table_name();
 			$from_table_name = Table::load($this->class_name)->get_fully_qualified_table_name();
-
-		}
+ 		}
 		else
 		{
 			$join_table = Table::load($this->class_name);
@@ -304,11 +313,15 @@ abstract class AbstractRelationship implements InterfaceRelationship
 			$this->set_keys($from_table->class->getName());
 
 			if ($using_through)
-				$join_primary_key = $this->keyify($this->class_name);
-			else
+			{
+				$foreign_key = $this->primary_key[0];
 				$join_primary_key = $this->foreign_key[0];
-
-			$foreign_key = $this->primary_key[0];
+			}
+			else
+			{
+				$join_primary_key = $this->foreign_key[0];
+				$foreign_key = $this->primary_key[0];
+			}
 		}
 		else
 		{
@@ -316,7 +329,15 @@ abstract class AbstractRelationship implements InterfaceRelationship
 			$join_primary_key = $this->primary_key[0];
 		}
 
-		return "INNER JOIN $join_table_name ON($from_table_name.$foreign_key = $join_table_name.$join_primary_key)";
+		if (!is_null($alias))
+		{
+			$aliased_join_table_name = $alias = $this->get_table()->conn->quote_name($alias);
+			$alias .= ' ';
+		}
+		else
+			$aliased_join_table_name = $join_table_name;
+
+		return "INNER JOIN $join_table_name {$alias}ON($from_table_name.$foreign_key = $aliased_join_table_name.$join_primary_key)";
 	}
 
 	/**
@@ -409,22 +430,20 @@ class HasMany extends AbstractRelationship
 				$this->set_class_name($this->options['source']);
 		}
 
+		if (!$this->primary_key && isset($this->options['primary_key']))
+			$this->primary_key = is_array($this->options['primary_key']) ? $this->options['primary_key'] : array($this->options['primary_key']);
+
 		if (!$this->class_name)
 			$this->set_inferred_class_name();
 	}
 
-	private function get_table()
-	{
-		return Table::load($this->class_name);
-	}
-
-	protected function set_keys($model_class_name)
+	protected function set_keys($model_class_name, $override=false)
 	{
 		//infer from class_name
-		if (!$this->foreign_key)
+		if (!$this->foreign_key || $override)
 			$this->foreign_key = array($this->keyify($model_class_name));
 
-		if (!$this->primary_key)
+		if (!$this->primary_key || $override)
 			$this->primary_key = Table::load($model_class_name)->pk;
 	}
 
@@ -447,17 +466,18 @@ class HasMany extends AbstractRelationship
 				if (!($through_relationship instanceof HasMany) && !($through_relationship instanceof BelongsTo))
 					throw new HasManyThroughAssociationException('has_many through can only use a belongs_to or has_many association');
 
+				// save old keys as we will be reseting them below for inner join convenience
+				$pk = $this->primary_key;
+				$fk = $this->foreign_key;
+
+				$this->set_keys($this->get_table()->class->getName(), true);
+
 				$through_table = Table::load(classify($this->through, true));
-				$through_table_name = $through_table->get_fully_qualified_table_name();
-
 				$this->options['joins'] = $this->construct_inner_join_sql($through_table, true);
-				$conn = $this->get_table()->conn;
 
-				foreach ($this->foreign_key as $index => &$key)
-				{
-					$k = $key;
-					$key = "$through_table_name." . $conn->quote_name($k);
-				}
+				// reset keys
+				$this->primary_key = $pk;
+				$this->foreign_key = $fk;
 			}
 
 			$this->initialized = true;
@@ -465,6 +485,7 @@ class HasMany extends AbstractRelationship
 
 		if (!($conditions = $this->create_conditions_from_keys($model, $this->foreign_key, $this->primary_key)))
 			return null;
+
 		$options = $this->unset_non_finder_options($this->options);
 		$options['conditions'] = $conditions;
 		return $class_name::find($this->poly_relationship ? 'all' : 'first',$options);
@@ -577,17 +598,6 @@ class HasAndBelongsToMany extends AbstractRelationship
  */
 class BelongsTo extends AbstractRelationship
 {
-	/**
-	 * Valid options to use:
-	 *
-	 * <ul>
-	 * <li><b>primary_key:</b> name of the primary_key of the association (defaults to "id")</li>
-	 * </ul>
-	 *
-	 * @var array
-	 */
-	static protected $valid_association_options = array('primary_key');
-
 	public function __construct($options=array())
 	{
 		parent::__construct($options);

@@ -5,6 +5,23 @@ class AdapterTest extends DatabaseTest
 {
 	const InvalidDb = '__1337__invalid_db__';
 
+	public function setUp($connection_name=null)
+	{
+		if ($connection_name && !in_array($connection_name, PDO::getAvailableDrivers()))
+			$this->mark_test_skipped($connection_name . ' drivers are not present');
+
+		parent::setUp($connection_name);
+	}
+
+	public function test_i_has_a_default_port_unless_im_sqlite()
+	{
+		if ($this->conn instanceof ActiveRecord\SqliteAdapter)
+			return;
+
+		$c = $this->conn;
+		$this->assert_true($c::$DEFAULT_PORT > 0);
+	}
+
 	public function test_should_set_adapter_variables()
 	{
 		$this->assert_not_null($this->conn->protocol);
@@ -30,6 +47,9 @@ class AdapterTest extends DatabaseTest
 	 */
 	public function test_no_host_connection()
 	{
+		if (!$GLOBALS['slow_tests'])
+			throw new ActiveRecord\DatabaseException("");
+
 		ActiveRecord\Connection::instance("{$this->conn->protocol}://user:pass");
 	}
 
@@ -38,7 +58,10 @@ class AdapterTest extends DatabaseTest
 	 */
 	public function test_connection_failed_invalid_host()
 	{
-		ActiveRecord\Connection::instance("{$this->conn->protocol}://user:pass/lskjdflkjsdlkjflksjf/db");
+		if (!$GLOBALS['slow_tests'])
+			throw new ActiveRecord\DatabaseException("");
+
+		ActiveRecord\Connection::instance("{$this->conn->protocol}://user:pass/1.1.1.1/db");
 	}
 
 	/**
@@ -62,9 +85,11 @@ class AdapterTest extends DatabaseTest
 		$config = ActiveRecord\Config::instance();
 		$name = $config->get_default_connection();
 		$url = parse_url($config->get_connection($name));
+		$conn = $this->conn;
+		$port = $conn::$DEFAULT_PORT;
 
 		if ($this->conn->protocol != 'sqlite')
-			ActiveRecord\Connection::instance("{$url['scheme']}://{$url['user']}:{$url['pass']}@{$url['host']}:{$this->conn->default_port()}{$url['path']}");
+			ActiveRecord\Connection::instance("{$url['scheme']}://{$url['user']}:{$url['pass']}@{$url['host']}:$port{$url['path']}");
 	}
 
 	/**
@@ -229,11 +254,15 @@ class AdapterTest extends DatabaseTest
 		$this->assert_not_equals($s,$this->conn->escape($s));
 	}
 
-	public function test_columns()
+	public function test_columnsx()
 	{
 		$columns = $this->conn->columns('authors');
+		$names = array('author_id','parent_author_id','name','updated_at','created_at','some_date','some_time','some_text','encrypted_password','mixedCaseField');
 
-		foreach (array('author_id','parent_author_id','name','updated_at','created_at','some_date','some_time','some_text','encrypted_password','mixedCaseField') as $field)
+		if ($this->conn instanceof ActiveRecord\OciAdapter)
+			$names = array_filter(array_map('strtolower',$names),function($s) { $s !== 'some_time'; });
+
+		foreach ($names as $field)
 			$this->assert_true(array_key_exists($field,$columns));
 
 		$this->assert_equals(true,$columns['author_id']->pk);
@@ -347,6 +376,23 @@ class AdapterTest extends DatabaseTest
 		} catch (Exception $e) {
 			$this->assert_equals(1,preg_match('/(an_invalid_column)|(exist)/',$e->getMessage()));
 		}
+	}
+
+	public function test_quote_name_does_not_over_quote()
+	{
+		$c = $this->conn;
+		$q = $c::$QUOTE_CHARACTER;
+		$qn = function($s) use ($c) { return $c->quote_name($s); };
+
+		$this->assert_equals("{$q}string", $qn("{$q}string"));
+		$this->assert_equals("string{$q}", $qn("string{$q}"));
+		$this->assert_equals("{$q}string{$q}", $qn("{$q}string{$q}"));
+	}
+
+	public function test_datetime_to_string()
+	{
+		$datetime = '2009-01-01 01:01:01 EST';
+		$this->assert_equals($datetime,$this->conn->datetime_to_string(date_create($datetime)));
 	}
 }
 ?>

@@ -37,6 +37,20 @@ abstract class Connection
 	public $queries;
 
 	/**
+	 * Switch for logging.
+	 *
+	 * @var bool
+	 */
+	 private $logging = false;
+
+	/**
+	 * Contains a Logger object that must impelement a log() method.
+	 *
+	 * @var object
+	 */
+	private $logger;
+
+	/**
 	 * Default PDO options to set for each connection.
 	 * @var array
 	 */
@@ -45,6 +59,18 @@ abstract class Connection
 		PDO::ATTR_ERRMODE			=> PDO::ERRMODE_EXCEPTION,
 		PDO::ATTR_ORACLE_NULLS		=> PDO::NULL_NATURAL,
 		PDO::ATTR_STRINGIFY_FETCHES	=> false);
+
+	/**
+	 * The quote character for stuff like column and field names.
+	 * @var string
+	 */
+	static $QUOTE_CHARACTER = '`';
+
+	/**
+	 * Default port.
+	 * @var int
+	 */
+	static $DEFAULT_PORT = 0;
 
 	/**
 	 * Retrieve a database connection.
@@ -78,6 +104,8 @@ abstract class Connection
 		try {
 			$connection = new $fqclass($info);
 			$connection->protocol = $info->protocol;
+			$connection->logging = $config->get_logging();
+			$connection->logger = $connection->logging ? $config->get_logger() : null;
 		} catch (PDOException $e) {
 			throw new DatabaseException($e);
 		}
@@ -107,7 +135,10 @@ abstract class Connection
 	 * Use this for any adapters that can take connection info in the form below
 	 * to set the adapters connection info.
 	 *
+	 * <code>
 	 * protocol://user:pass@host[:port]/dbname
+	 * protocol://user:pass@unix(/some/file/path)/dbname
+	 * </code>
 	 *
 	 * @param string $url A connection URL
 	 * @return object the parsed URL as an object.
@@ -126,6 +157,17 @@ abstract class Connection
 		$info->user		= isset($url['user']) ? $url['user'] : null;
 		$info->pass		= isset($url['pass']) ? $url['pass'] : null;
 
+		if ($info->host == 'unix(')
+		{
+			$socket_database = $info->host . '/' . $info->db;
+
+			if (preg_match_all('/^unix\((.+)\)\/(.+)$/', $socket_database, $matches) > 0)
+			{
+				$info->host = $matches[1][0];
+				$info->db = $matches[2][0];
+			}
+		}
+
 		if (isset($url['port']))
 			$info->port = $url['port'];
 
@@ -140,10 +182,20 @@ abstract class Connection
 	 */
 	protected function __construct($info)
 	{
-		try {
-			$this->connection = new PDO("$info->protocol:host=$info->host" .
-				(isset($info->port) ? ";port=$info->port":'') .	";dbname=$info->db",$info->user,$info->pass,
-				static::$PDO_OPTIONS);
+		try
+		{
+			// unix sockets start with a /
+			if ($info->host[0] != '/')
+			{
+				$host = "host=$info->host";
+
+				if (isset($info->port))
+					$host .= ";port=$info->port";
+			}
+			else
+				$host = "unix_socket=$info->host";
+
+			$this->connection = new PDO("$info->protocol:$host;dbname=$info->db",$info->user,$info->pass,static::$PDO_OPTIONS);
 		} catch (PDOException $e) {
 			throw new DatabaseException($e);
 		}
@@ -199,8 +251,8 @@ abstract class Connection
 	 */
 	public function query($sql, &$values=array())
 	{
-		if (isset($GLOBALS['ACTIVERECORD_LOG']) && $GLOBALS['ACTIVERECORD_LOG'])
-			$GLOBALS['ACTIVERECORD_LOGGER']->log($sql, PEAR_LOG_INFO);
+		if ($this->logging)
+			$this->logger->log($sql);
 
 		$this->last_query = $sql;
 		$this->queries[] = array('query' => $sql, 'values' => $values);
@@ -317,15 +369,50 @@ abstract class Connection
 	/**
 	 * Return SQL for getting the next value in a sequence.
 	 *
-	 * @param string $sequence_name Name of the sequence 
+	 * @param string $sequence_name Name of the sequence
 	 * @return string
 	 */
 	public function next_sequence_value($sequence_name) { return null; }
 
 	/**
-	 * Returns the default port of the database server.
+	 * Quote a name like table names and field names.
+	 *
+	 * @param string $string String to quote.
+	 * @return string
 	 */
-	abstract function default_port();
+	public function quote_name($string)
+	{
+		return $string[0] === static::$QUOTE_CHARACTER || $string[strlen($string)-1] === static::$QUOTE_CHARACTER ?
+			$string : static::$QUOTE_CHARACTER . $string . static::$QUOTE_CHARACTER;
+	}
+
+	/**
+	 * Return a date time formatted into the database's datetime format.
+	 *
+	 * @param DateTime $datetime The DateTime object
+	 * @return string
+	 */
+	public function datetime_to_string($datetime)
+	{
+		return $datetime->format('Y-m-d H:i:s T');
+	}
+
+	/**
+	 * Converts a string representation of a datetime into a DateTime object.
+	 *
+	 * @param string $string A datetime in the form accepted by date_create()
+	 * @return DateTime
+	 */
+	public function string_to_datetime($string)
+	{
+		$date = date_create($string);
+		$errors = \DateTime::getLastErrors();
+
+		if ($errors['warning_count'] > 0 || $errors['error_count'] > 0)
+			return null;
+
+		return $date;
+	}
 
 	/**
 	 * Adds a limit clause to the SQL query.
@@ -352,13 +439,5 @@ abstract class Connection
 	 * @return PDOStatement
 	 */
 	abstract function query_for_tables();
-
-	/**
-	 * Quote a name like table names and field names.
-	 *
-	 * @param string $string String to quote.
-	 * @return string
-	 */
-	abstract function quote_name($string);
 };
 ?>
